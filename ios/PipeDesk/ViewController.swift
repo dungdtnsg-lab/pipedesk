@@ -194,7 +194,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
             }
             guard let data = try? JSONEncoder().encode(rawValue),
                   let jsonValue = String(data: data, encoding: .utf8) else { return }
-            let js = "window.__pipedeskCccdQrResult && window.__pipedeskCccdQrResult(\\(jsonValue))"
+            let js = "window.__pipedeskCccdQrResult && window.__pipedeskCccdQrResult(\(jsonValue))"
             self.webView?.evaluateJavaScript(js, completionHandler: nil)
         }
         scanner.modalPresentationStyle = .fullScreen
