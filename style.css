@@ -761,3 +761,39 @@ body.is-locked { overflow: hidden; }
     transition: none !important;
   }
 }
+
+
+/* CCCD QR scanner */
+.cccd-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cccd-section-head > div { min-width: 0; }
+.scan-cccd-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+.qr-sheet {
+  max-width: 420px;
+}
+.qr-reader {
+  width: 100%;
+  min-height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b1220;
+}
+.qr-reader video {
+  width: 100% !important;
+  border-radius: 12px;
+}
+.qr-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+  text-align: center;
+}

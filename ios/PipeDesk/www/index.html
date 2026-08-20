@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1.6.8">
 
 <script>
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -270,7 +270,7 @@
         <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
       </div>
       <div class="about">
-        <strong>CRM D7 v1.6.6</strong>
+        <strong>CRM D7 v1.6.8</strong>
         <span>Phát triển bởi Thân Sang</span>
       </div>
     </section>
@@ -335,17 +335,56 @@
               <a id="phoneZaloLink" class="zalo-field-btn disabled" href="#" target="_blank" rel="noopener" aria-disabled="true">Zalo</a>
             </div>
           </label>
-          <label class="field">
-            <span>Số CCCD</span>
-            <input id="cccd" type="text" inputmode="numeric" autocomplete="off">
-          </label>
           <label class="field full">
             <span>Email cá nhân</span>
             <input id="personalEmail" type="email" inputmode="email" autocomplete="email" placeholder="vidu@gmail.com">
           </label>
+          <div class="form-section-title full cccd-section-head">
+            <div>
+              <strong>Thông tin CCCD</strong>
+              <small>Đầy đủ trường trên thẻ căn cước / QR CCCD</small>
+            </div>
+            <button type="button" id="scanCccdQrBtn" class="secondary compact scan-cccd-btn">Quét QR CCCD</button>
+          </div>
+          <label class="field">
+            <span>Số CCCD / Định danh</span>
+            <input id="cccd" type="text" inputmode="numeric" autocomplete="off" placeholder="12 số">
+          </label>
+          <label class="field">
+            <span>Số CMND cũ (9 số)</span>
+            <input id="cmndOld" type="text" inputmode="numeric" autocomplete="off" placeholder="Nếu có">
+          </label>
+          <label class="field">
+            <span>Ngày sinh</span>
+            <input id="dateOfBirth" type="date">
+          </label>
+          <label class="field">
+            <span>Giới tính</span>
+            <select id="gender">
+              <option value="">Chưa chọn</option>
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Quốc tịch</span>
+            <input id="nationality" type="text" autocomplete="off" placeholder="Việt Nam">
+          </label>
+          <label class="field">
+            <span>Ngày cấp CCCD</span>
+            <input id="idIssueDate" type="date">
+          </label>
+          <label class="field">
+            <span>Ngày hết hạn</span>
+            <input id="idExpiryDate" type="date">
+          </label>
+          <label class="field">
+            <span>Số ĐD đã hủy</span>
+            <input id="cancelledId" type="text" inputmode="numeric" autocomplete="off" placeholder="Nếu có">
+          </label>
           <div class="form-section-title full">
             <strong>Địa chỉ khách hàng</strong>
-            <small>Danh mục hành chính Việt Nam áp dụng từ 01/07/2025</small>
+            <small>Danh mục hành chính Việt Nam áp dụng từ 01/07/2025 · Nơi cư trú trên CCCD</small>
           </div>
           <label class="field">
             <span>Tỉnh / Thành phố</span>
@@ -504,10 +543,32 @@
     </div>
   </div>
 
+
+  <div id="qrScanModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-qr></div>
+    <section class="modal-sheet qr-sheet" role="dialog" aria-modal="true" aria-labelledby="qrScanTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="qrScanTitle">Quét QR CCCD</h2>
+          <p>Đưa mã QR mặt trước thẻ vào khung hình</p>
+        </div>
+        <button class="icon-btn" type="button" data-close-qr aria-label="Đóng">
+          <svg class="ico"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <div id="qrReader" class="qr-reader"></div>
+      <p id="qrScanHint" class="qr-hint">Đang mở camera…</p>
+      <div class="form-actions">
+        <button class="secondary" type="button" data-close-qr>Hủy</button>
+      </div>
+    </section>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="demo-seed.js"></script>
-  <script src="data/vietnam-address-catalogs.js"></script>
-  <script src="main.js"></script>
+  <script src="data/vietnam-address-catalogs.js?v=1.6.8"></script>
+  <script src="main.js?v=1.6.8"></script>
   <script>
     (() => {
       const installButton = document.getElementById("installBtn");

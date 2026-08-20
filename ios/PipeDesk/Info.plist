@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.6.6</string>
+	<string>1.6.8</string>
 	<key>CFBundleVersion</key>
-	<string>166</string>
+	<string>168</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
@@ -61,6 +61,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>CRM D7 cần camera để quét mã QR trên thẻ căn cước.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>CRM D7 dùng Face ID để xác nhận khi xóa lead.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

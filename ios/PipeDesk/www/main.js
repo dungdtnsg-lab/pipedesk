@@ -6,7 +6,7 @@
   const SYNC_CONFIG_KEY = "pipedesk_google_sync_v1";
   const SYNC_DELETIONS_KEY = "pipedesk_sync_deletions_v1";
   const SYNC_LAST_SUCCESS_KEY = "pipedesk_sync_last_success_v1";
-  const SCHEMA_VERSION = 6;
+  const SCHEMA_VERSION = 7;
   const VAULT_ITERATIONS = 100000;
   const DEFAULT_STAFF_NAME = "Thân Trọng Sang";
   const DEFAULT_UNIT = "HH - D7 1";
@@ -162,6 +162,13 @@
       id: record.id ? String(record.id) : makeId(),
       phone: identifierText(record.phone, 10),
       cccd: identifierText(record.cccd, 12),
+      cmndOld: identifierText(record.cmndOld, 9),
+      dateOfBirth: String(record.dateOfBirth || "").trim().slice(0, 10),
+      gender: ["Nam", "Nữ"].includes(record.gender) ? record.gender : "",
+      nationality: String(record.nationality || "").trim() || "Việt Nam",
+      idIssueDate: String(record.idIssueDate || "").trim().slice(0, 10),
+      idExpiryDate: String(record.idExpiryDate || "").trim().slice(0, 10),
+      cancelledId: identifierText(record.cancelledId, 12),
       personalEmail: String(record.personalEmail || "").trim(),
       provinceId: record.provinceId ? String(record.provinceId) : "",
       provinceName: address.provinceName,
@@ -885,6 +892,13 @@
     $("#customerName").value = record.customerName || "";
     $("#phone").value = record.phone || "";
     $("#cccd").value = record.cccd || "";
+    $("#cmndOld").value = record.cmndOld || "";
+    $("#dateOfBirth").value = record.dateOfBirth || "";
+    $("#gender").value = record.gender || "";
+    $("#nationality").value = record.nationality || "Việt Nam";
+    $("#idIssueDate").value = record.idIssueDate || "";
+    $("#idExpiryDate").value = record.idExpiryDate || "";
+    $("#cancelledId").value = record.cancelledId || "";
     $("#personalEmail").value = record.personalEmail || "";
     $("#companyName").value = record.companyName || "";
     $("#companyAddress").value = record.companyAddress || "";
@@ -930,6 +944,13 @@
     ["phone", "Số điện thoại"],
     ["personalEmail", "Email cá nhân"],
     ["cccd", "CCCD"],
+    ["cmndOld", "CMND cũ"],
+    ["dateOfBirth", "Ngày sinh"],
+    ["gender", "Giới tính"],
+    ["nationality", "Quốc tịch"],
+    ["idIssueDate", "Ngày cấp CCCD"],
+    ["idExpiryDate", "Ngày hết hạn"],
+    ["cancelledId", "Số ĐD đã hủy"],
     ["status", "Tình trạng hồ sơ"],
     ["statusDate", "Ngày đổi trạng thái"],
     ["flow", "Luồng trình"],
@@ -948,6 +969,12 @@
     "phone",
     "personalEmail",
     "cccd",
+    "cmndOld",
+    "dateOfBirth",
+    "gender",
+    "nationality",
+    "idIssueDate",
+    "idExpiryDate",
     "status",
     "statusDate",
     "product",
@@ -1000,7 +1027,7 @@
   }
 
   function tableCell(record, key) {
-    if (key === "updatedDate" || key === "statusDate") return escapeHtml(formatDate(record[key]));
+    if (key === "updatedDate" || key === "statusDate" || key === "dateOfBirth" || key === "idIssueDate" || key === "idExpiryDate") return escapeHtml(formatDate(record[key]));
     if (key === "amount" || key === "companyRevenue" || key === "insuranceAmount") {
       return Number(record[key]) > 0 ? escapeHtml(formatNumber(record[key])) : "—";
     }
@@ -1174,6 +1201,10 @@
           record.phone,
           record.personalEmail,
           record.cccd,
+          record.cmndOld,
+          record.cancelledId,
+          record.gender,
+          record.nationality,
           record.staffName,
           record.product,
           record.notes,
@@ -1227,6 +1258,9 @@
             <div class="detail"><span>Điện thoại</span><strong>${escapeHtml(record.phone || "—")}</strong></div>
             <div class="detail"><span>Email cá nhân</span><strong>${escapeHtml(record.personalEmail || "—")}</strong></div>
             <div class="detail"><span>CCCD</span><strong>${escapeHtml(record.cccd || "—")}</strong></div>
+            <div class="detail"><span>CMND cũ</span><strong>${escapeHtml(record.cmndOld || "—")}</strong></div>
+            <div class="detail"><span>Ngày sinh</span><strong>${escapeHtml(formatDate(record.dateOfBirth))}</strong></div>
+            <div class="detail"><span>Giới tính</span><strong>${escapeHtml(record.gender || "—")}</strong></div>
             <div class="detail address-detail"><span>Địa chỉ</span><strong>${escapeHtml(record.fullAddress || "—")}</strong></div>
             <div class="detail"><span>Công ty</span><strong>${escapeHtml(record.companyName || "—")}</strong></div>
             <div class="detail"><span>Doanh thu</span><strong>${escapeHtml(Number(record.companyRevenue) > 0 ? `${formatNumber(record.companyRevenue)} triệu` : "—")}</strong></div>
@@ -1268,7 +1302,175 @@
     if (!catalog.hasAmount) $("#amount").value = "";
   }
 
-  function openForm(record = null) {
+
+  let qrScanner = null;
+
+  function parseCccdQrText(raw) {
+    const text = String(raw || "").trim();
+    if (!text) return null;
+
+    // Common CCCD QR: fields separated by |
+    // Variants observed:
+    // cccd|cmndOld|fullName|dob|gender|address|issueDate
+    // cccd|cmndOld|fullName|dob|gender|address|issueDate|...
+    const parts = text.split("|").map((p) => p.trim()).filter((p, i, arr) => i < arr.length);
+
+    if (parts.length >= 3 && /^\d{9,12}$/.test(parts[0].replace(/\D/g, ""))) {
+      const cccd = parts[0].replace(/\D/g, "").slice(0, 12);
+      const cmndOld = (parts[1] || "").replace(/\D/g, "").slice(0, 9);
+      const fullName = parts[2] || "";
+      const dobRaw = parts[3] || "";
+      const genderRaw = parts[4] || "";
+      const address = parts[5] || "";
+      const issueRaw = parts[6] || "";
+      // Some cards put expiry later
+      const expiryRaw = parts[7] || "";
+
+      return {
+        cccd,
+        cmndOld: cmndOld.length >= 8 ? cmndOld : "",
+        customerName: fullName,
+        dateOfBirth: normalizeQrDate(dobRaw),
+        gender: normalizeQrGender(genderRaw),
+        nationality: "Việt Nam",
+        fullAddress: address,
+        idIssueDate: normalizeQrDate(issueRaw),
+        idExpiryDate: normalizeQrDate(expiryRaw),
+        cancelledId: ""
+      };
+    }
+
+    // Fallback: try to extract 12-digit CCCD anywhere
+    const idMatch = text.match(/\b(\d{12})\b/);
+    if (idMatch) {
+      return {
+        cccd: idMatch[1],
+        cmndOld: "",
+        customerName: "",
+        dateOfBirth: "",
+        gender: "",
+        nationality: "Việt Nam",
+        fullAddress: "",
+        idIssueDate: "",
+        idExpiryDate: "",
+        cancelledId: ""
+      };
+    }
+    return null;
+  }
+
+  function normalizeQrDate(value) {
+    const s = String(value || "").trim();
+    if (!s) return "";
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // DD/MM/YYYY or DD-MM-YYYY
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+      return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    }
+    // YYYYMMDD
+    const m2 = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+    return "";
+  }
+
+  function normalizeQrGender(value) {
+    const s = normalizeSearch(value);
+    if (!s) return "";
+    if (s === "nam" || s === "male" || s === "m" || s === "1") return "Nam";
+    if (s === "nu" || s === "nữ" || s === "female" || s === "f" || s === "0" || s === "2") return "Nữ";
+    if (s.includes("nam") && !s.includes("nu")) return "Nam";
+    if (s.includes("nu") || s.includes("nữ")) return "Nữ";
+    return "";
+  }
+
+  function applyCccdQrData(data) {
+    if (!data) return;
+    if (data.cccd) $("#cccd").value = data.cccd;
+    if (data.cmndOld) $("#cmndOld").value = data.cmndOld;
+    if (data.customerName && !$("#customerName").value.trim()) {
+      $("#customerName").value = data.customerName;
+    } else if (data.customerName) {
+      $("#customerName").value = data.customerName;
+    }
+    if (data.dateOfBirth) $("#dateOfBirth").value = data.dateOfBirth;
+    if (data.gender) $("#gender").value = data.gender;
+    if (data.nationality) $("#nationality").value = data.nationality;
+    if (data.idIssueDate) $("#idIssueDate").value = data.idIssueDate;
+    if (data.idExpiryDate) $("#idExpiryDate").value = data.idExpiryDate;
+    if (data.cancelledId) $("#cancelledId").value = data.cancelledId;
+
+    // Best-effort address fill into street if empty
+    if (data.fullAddress) {
+      const currentStreet = $("#streetAddress").value.trim();
+      if (!currentStreet) {
+        $("#streetAddress").value = data.fullAddress;
+        updateAddressPreview();
+      }
+    }
+    showToast("Đã điền thông tin từ QR CCCD");
+  }
+
+  async function stopQrScanner() {
+    const hint = $("#qrScanHint");
+    try {
+      if (qrScanner) {
+        await qrScanner.stop();
+        await qrScanner.clear();
+      }
+    } catch (_) { /* ignore */ }
+    qrScanner = null;
+    if (hint) hint.textContent = "";
+  }
+
+  function closeQrScanModal() {
+    stopQrScanner();
+    const modal = $("#qrScanModal");
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  async function openQrScanModal() {
+    if (typeof Html5Qrcode === "undefined") {
+      alert("Thư viện quét QR chưa tải được. Kiểm tra mạng rồi thử lại.");
+      return;
+    }
+    const modal = $("#qrScanModal");
+    const hint = $("#qrScanHint");
+    if (!modal) return;
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    if (hint) hint.textContent = "Đang mở camera…";
+
+    await stopQrScanner();
+    qrScanner = new Html5Qrcode("qrReader");
+    const onSuccess = async (decodedText) => {
+      const data = parseCccdQrText(decodedText);
+      if (!data || !data.cccd) {
+        if (hint) hint.textContent = "QR không đúng định dạng CCCD. Thử lại.";
+        return;
+      }
+      applyCccdQrData(data);
+      closeQrScanModal();
+    };
+    try {
+      await qrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        onSuccess,
+        () => {}
+      );
+      if (hint) hint.textContent = "Giữ QR trong khung đến khi nhận được dữ liệu";
+    } catch (err) {
+      if (hint) hint.textContent = "Không mở được camera. Cho phép quyền camera rồi thử lại.";
+      showToast("Cần quyền camera để quét QR");
+    }
+  }
+
+
+    function openForm(record = null) {
     $("#customerForm").reset();
     hideCustomerSuggestions();
     $("#recordId").value = record?.id || "";
@@ -1280,6 +1482,13 @@
     $("#customerName").value = record?.customerName || "";
     $("#phone").value = record?.phone || "";
     $("#cccd").value = record?.cccd || "";
+    $("#cmndOld").value = record?.cmndOld || "";
+    $("#dateOfBirth").value = record?.dateOfBirth || "";
+    $("#gender").value = record?.gender || "";
+    $("#nationality").value = record?.nationality || "Việt Nam";
+    $("#idIssueDate").value = record?.idIssueDate || "";
+    $("#idExpiryDate").value = record?.idExpiryDate || "";
+    $("#cancelledId").value = record?.cancelledId || "";
     $("#personalEmail").value = record?.personalEmail || "";
     updatePhoneActions();
     setAddressForm(record || {});
@@ -1332,6 +1541,13 @@
       customerName: $("#customerName").value.trim(),
       phone: identifierText($("#phone").value, 10),
       cccd: identifierText($("#cccd").value, 12),
+      cmndOld: identifierText($("#cmndOld").value, 9),
+      dateOfBirth: $("#dateOfBirth").value,
+      gender: $("#gender").value,
+      nationality: $("#nationality").value.trim() || "Việt Nam",
+      idIssueDate: $("#idIssueDate").value,
+      idExpiryDate: $("#idExpiryDate").value,
+      cancelledId: identifierText($("#cancelledId").value, 12),
       personalEmail: $("#personalEmail").value.trim(),
       provinceId: $("#province").value || pendingAddress?.provinceId || "",
       provinceName: address.provinceName,
@@ -1639,7 +1855,7 @@
       .filter((record) => record.type === type)
       .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
       .map((record) => columns.map(([key]) => {
-        if (key === "updatedDate" || key === "statusDate") return formatDate(record[key]);
+        if (key === "updatedDate" || key === "statusDate" || key === "dateOfBirth" || key === "idIssueDate" || key === "idExpiryDate") return formatDate(record[key]);
         if (key === "amount" || key === "companyRevenue" || key === "insuranceAmount") return Number(record[key]) || 0;
         return record[key] || "";
       }));
@@ -2096,6 +2312,8 @@
     $("#legacyDistrict").addEventListener("input", updateAddressPreview);
     $("#streetAddress").addEventListener("input", updateAddressPreview);
     $("#customerForm").addEventListener("submit", submitForm);
+    $("#scanCccdQrBtn")?.addEventListener("click", openQrScanModal);
+    $$("[data-close-qr]").forEach((button) => button.addEventListener("click", closeQrScanModal));
     $("#searchInput").addEventListener("input", renderCustomers);
     $("#step3SearchInput").addEventListener("input", renderStep3);
     $("#typeFilter").addEventListener("change", renderCustomers);
@@ -2148,7 +2366,8 @@
     });
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
-      if ($("#passwordModal").classList.contains("open")) closePasswordModal(false);
+      if ($("#qrScanModal")?.classList.contains("open")) closeQrScanModal();
+      else if ($("#passwordModal").classList.contains("open")) closePasswordModal(false);
       else if ($("#formModal").classList.contains("open")) closeForm();
     });
   }
