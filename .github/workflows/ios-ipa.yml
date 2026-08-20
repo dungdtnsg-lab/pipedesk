@@ -62,8 +62,8 @@ jobs:
       - name: Attach IPA to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.6.1-ios
-          name: PipeDesk v1.6.1 IPA
+          tag_name: v1.6.8-ios
+          name: CRM D7 v1.6.8 IPA
           files: PipeDesk.ipa
           body: |
             IPA unsigned (arm64). Cài bằng Sideloadly / AltStore / SideStore với Apple ID của bạn.
