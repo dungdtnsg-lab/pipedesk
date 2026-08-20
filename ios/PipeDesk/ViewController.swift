@@ -26,6 +26,10 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         webView.scrollView.bounces = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.allowsBackForwardNavigationGestures = false
+        webView.scrollView.minimumZoomScale = 1
+        webView.scrollView.maximumZoomScale = 1
+        webView.scrollView.bouncesZoom = false
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         webView.isOpaque = false
         webView.backgroundColor = view.backgroundColor
         view.addSubview(webView)

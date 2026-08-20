@@ -811,6 +811,26 @@
     ["fullAddress", "Địa chỉ"],
     ["notes", "Ghi chú"]
   ];
+  const dashboardColumnKeys = [
+    "customerName",
+    "phone",
+    "personalEmail",
+    "cccd",
+    "status",
+    "statusDate",
+    "product",
+    "amount",
+    "flow",
+    "companyName",
+    "companyAddress",
+    "companyRevenue",
+    "insuranceType",
+    "insuranceAmount",
+    "fullAddress",
+    "notes",
+    "updatedDate"
+  ];
+  const staffColumnKeys = new Set(["staffName", "staffRole", "unit"]);
 
   function phoneHref(phone) {
     return String(phone || "").replace(/[^\d+]/g, "");
@@ -897,9 +917,7 @@
       return;
     }
 
-    const columns = type === "B3"
-      ? pipelineColumns.filter(([key]) => key !== "amount" && key !== "flow")
-      : pipelineColumns;
+    const columns = columnsForTable(type, options);
     container.innerHTML = `
       <div class="table-scroll">
         <table class="data-table ${type === "B3" ? "compact-table" : ""}">
@@ -914,6 +932,23 @@
           </tbody>
         </table>
       </div>`;
+  }
+
+  function columnsForTable(type, options = {}) {
+    const byKey = new Map(pipelineColumns);
+    let keys;
+    if (options.customerOnly) {
+      keys = dashboardColumnKeys.slice();
+    } else {
+      keys = pipelineColumns.map(([key]) => key);
+    }
+    if (type === "B3") {
+      keys = keys.filter((key) => key !== "amount" && key !== "flow");
+    }
+    if (options.hideStaff) {
+      keys = keys.filter((key) => !staffColumnKeys.has(key));
+    }
+    return keys.map((key) => [key, byKey.get(key)]).filter(([, label]) => label);
   }
 
   function renderStep3() {
@@ -933,6 +968,8 @@
     renderPipelineTable($("#step3Table"), "B3", {
       search,
       actions: true,
+      customerOnly: true,
+      hideStaff: true,
       emptyText: records.some((record) => record.type === "B3")
         ? "Không tìm thấy khách hàng Bước 3 phù hợp."
         : "Chưa có khách hàng Bước 3."
@@ -971,10 +1008,14 @@
     $("#activeCcCount").textContent = `${formatNumber(activeCcCount)} thẻ`;
     renderPipelineTable($("#uplOverviewTable"), "UPL", {
       records: overviewRecords,
+      customerOnly: true,
+      hideStaff: true,
       emptyText: period.mode === "all" ? "Chưa có hồ sơ UPL." : "Không có hồ sơ UPL trong kỳ."
     });
     renderPipelineTable($("#ccOverviewTable"), "CC", {
       records: overviewRecords,
+      customerOnly: true,
+      hideStaff: true,
       emptyText: period.mode === "all" ? "Chưa có hồ sơ Thẻ CC." : "Không có hồ sơ Thẻ CC trong kỳ."
     });
 
@@ -1075,7 +1116,6 @@
             <div class="detail"><span>Sản phẩm</span><strong>${escapeHtml(record.product || "—")}</strong></div>
             <div class="detail"><span>Số tiền</span><strong>${escapeHtml(amount)}</strong></div>
             <div class="detail"><span>Bảo hiểm</span><strong>${escapeHtml(record.insuranceType ? `${record.insuranceType}${Number(record.insuranceAmount) > 0 ? ` · ${formatNumber(record.insuranceAmount)} triệu` : ""}` : "—")}</strong></div>
-            <div class="detail"><span>Cán bộ bán</span><strong>${escapeHtml(record.staffName || "—")}</strong></div>
             <div class="detail"><span>Cập nhật</span><strong>${escapeHtml(formatDate(record.updatedDate))}</strong></div>
             <div class="detail"><span>Điện thoại</span><strong>${escapeHtml(record.phone || "—")}</strong></div>
             <div class="detail"><span>Email cá nhân</span><strong>${escapeHtml(record.personalEmail || "—")}</strong></div>

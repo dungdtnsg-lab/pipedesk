@@ -2,8 +2,8 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1c1c1a">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b2545">
   <meta name="description" content="Quản lý pipeline khách hàng ngay trên thiết bị">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,6 +16,9 @@
   <link rel="stylesheet" href="style.css">
 
 <script>
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a');
     if (!a || !a.href) return;
@@ -269,7 +272,7 @@
         <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
       </div>
       <div class="about">
-        <strong>PipeDesk v1.6.1</strong>
+        <strong>PipeDesk v1.6.2</strong>
         <span>Phát triển bởi Thân Sang</span>
       </div>
     </section>

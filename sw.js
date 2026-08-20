@@ -1,14 +1,14 @@
-const CACHE_NAME = "pipedesk-pwa-v1.6.1";
+const CACHE_NAME = "pipedesk-pwa-v1.6.2";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
-  "./style.css?v=1.6.1",
+  "./style.css?v=1.6.2",
   "./main.js",
-  "./main.js?v=1.6.1",
+  "./main.js?v=1.6.2",
   "./demo-seed.js",
   "./data/vietnam-address-catalogs.js",
-  "./data/vietnam-address-catalogs.js?v=1.6.1",
+  "./data/vietnam-address-catalogs.js?v=1.6.2",
   "./data/vietnam-provinces-2025.json",
   "./data/vietnam-wards-2025.json",
   "./manifest.webmanifest",

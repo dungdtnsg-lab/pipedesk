@@ -24,7 +24,8 @@ for name in files:
         raise SystemExit(f"missing {src}")
     data = src.read_bytes()
     if name == "index.html":
-        text = data.decode("utf-8").replace("?v=1.6.1", "")
+        text = data.decode("utf-8")
+        text = __import__("re").sub(r"\?v=\d+\.\d+\.\d+", "", text)
         (DEST / name).write_text(text, encoding="utf-8")
     else:
         (DEST / name).write_bytes(data)
