@@ -3,15 +3,756 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b2545">
+  <meta name="description" content="CRM D7 — quản lý pipeline khách hàng ngay trên thiết bị">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0a1628">
+  <meta name="apple-mobile-web-app-title" content="CRM D7">
   <title>CRM D7</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css?v=1.7.0">
+
+<script>
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a || !a.href) return;
+    if (a.hasAttribute('download')) return;
+    if (a.target === '_blank') return;
+    const href = a.getAttribute('href') || a.href;
+    if (/^(blob:|mailto:|tel:|https?:)/i.test(href)) return;
+    if (a.origin === window.location.origin || !a.href.startsWith('http')) {
+      e.preventDefault();
+      window.location.href = a.href;
+    }
+  });
+</script>
 </head>
 <body>
-  <!-- truncated for tool call - will use proper method -->
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="i-mark" viewBox="0 0 24 24"><path d="M6 4v16M6 4h11M6 11h9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.4"/><rect x="13" y="4" width="7" height="7" rx="1.4"/><rect x="4" y="13" width="7" height="7" rx="1.4"/><rect x="13" y="13" width="7" height="7" rx="1.4"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M4.2 19c.6-3 2.6-4.6 4.8-4.6S13.2 16 13.8 19"/><circle cx="16.5" cy="9" r="2.4"/><path d="M15.4 19c.3-1.8 1.4-3.1 3.1-3.6"/></symbol>
+    <symbol id="i-steps" viewBox="0 0 24 24"><path d="M5 19h14M8 15h8M11 11h5M14 7h4"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v9.5a2 2 0 0 1-1.2 1.8L12 21l-6.8-3.7A2 2 0 0 1 4 17.5V8z"/><path d="M4 8l8 4 8-4M12 12v9"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.6 1.6A3.5 3.5 0 0 0 7 18z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 3.8h3.2l1 4.2-2 1.2a12 12 0 0 0 5.6 5.6l1.2-2 4.2 1V20a1.8 1.8 0 0 1-2 1.8A16 16 0 0 1 3.2 7.8 1.8 1.8 0 0 1 5 6h2z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z"/><circle cx="12" cy="11" r="2"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/></symbol>
+    <symbol id="i-nfc" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 8.5c2.8 0 5 2.2 5 7M9 12c1.5 0 2.5 1.2 2.5 3.5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M6 17l4.2-4.2 3 3L16 13l4.5 4"/></symbol>
+    <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="7" width="11" height="13" rx="1.6"/><path d="M8 10H6.4A1.4 1.4 0 0 1 5 8.6V4.4A1.4 1.4 0 0 1 6.4 3h7.2A1.4 1.4 0 0 1 15 4.4V7"/><path d="M10 3.2h4v2.2h-4z"/></symbol>
+    <symbol id="i-torch" viewBox="0 0 24 24"><path d="M9 2h6l1 5H8z"/><path d="M8 7h8v3l-1.2 2v8.5a1.5 1.5 0 0 1-1.5 1.5h-2.6A1.5 1.5 0 0 1 9.2 20.5V12L8 10z"/><path d="M12 13v4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l5 5 9-11"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c.8-3.4 3.2-5.2 7-5.2s6.2 1.8 7 5.2"/></symbol>
+  </svg>
+
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">D7</div>
+      <div>
+        <h1>CRM D7</h1>
+        <p>Pipeline khách hàng</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="installBtn" class="install-btn compact" hidden>
+        <svg class="ico"><use href="#i-download"/></svg>
+        Cài ứng dụng
+      </button>
+      <button id="addTopBtn" class="primary compact">
+        <svg class="ico"><use href="#i-plus"/></svg>
+        Thêm khách hàng
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section id="dashboardView" class="view active">
+      <div class="section-heading">
+        <div>
+          <h2>Tổng quan</h2>
+          <p id="todayText"></p>
+        </div>
+      </div>
+      <div class="overview-period panel">
+        <div class="period-heading">
+          <div>
+            <strong>Khoảng thời gian</strong>
+            <small>Lọc theo Ngày cập nhật</small>
+          </div>
+          <button id="currentPeriodBtn" class="text-btn" type="button">Kỳ hiện tại</button>
+        </div>
+        <div class="period-controls">
+          <select id="overviewPeriodType" aria-label="Kiểu khoảng thời gian">
+            <option value="all">Tất cả</option>
+            <option value="week">Theo tuần</option>
+            <option value="month">Theo tháng</option>
+          </select>
+          <input id="overviewWeek" type="week" aria-label="Chọn tuần" hidden>
+          <input id="overviewMonth" type="month" aria-label="Chọn tháng" hidden>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <article class="stat-card hero">
+          <span>Tổng khách hàng</span>
+          <strong id="totalCustomers">0</strong>
+          <small>Dữ liệu đang lưu trên máy</small>
+        </article>
+        <article class="stat-card">
+          <span>UPL</span>
+          <strong id="uplCount">0</strong>
+          <small id="uplAmount">0 triệu</small>
+        </article>
+        <article class="stat-card">
+          <span>Thẻ CC</span>
+          <strong id="ccCount">0</strong>
+          <small>Hồ sơ thẻ</small>
+        </article>
+        <article class="stat-card">
+          <span>SCL</span>
+          <strong id="sclCount">0</strong>
+          <small id="sclAmount">0 triệu</small>
+        </article>
+        <article class="stat-card">
+          <span>Khách hàng Bước 3</span>
+          <strong id="b3Count">0</strong>
+          <small>Lead đang chăm sóc</small>
+        </article>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h3>Phân bổ theo trạng thái</h3>
+          <button id="goCustomersBtn" class="text-btn">Xem danh sách</button>
+        </div>
+        <div class="status-highlights">
+          <article class="status-highlight disbursed">
+            <span>Tổng tiền giải ngân</span>
+            <strong id="disbursedAmount">0 triệu</strong>
+          </article>
+          <article class="status-highlight active-cc">
+            <span>CC đã Active</span>
+            <strong id="activeCcCount">0 thẻ</strong>
+          </article>
+        </div>
+      </div>
+
+      <div class="pipeline-sheet upl-sheet">
+        <div class="panel-title sheet-title">
+          <div>
+            <h3>Bảng theo dõi UPL</h3>
+            <p>Đầy đủ các cột quản lý theo pipeline</p>
+          </div>
+          <button class="text-btn" data-dashboard-type="UPL">Xem UPL</button>
+        </div>
+        <div id="uplOverviewTable" class="table-scroll"></div>
+      </div>
+
+      <div class="pipeline-sheet cc-sheet">
+        <div class="panel-title sheet-title">
+          <div>
+            <h3>Bảng theo dõi Thẻ CC</h3>
+            <p>Đầy đủ các cột quản lý theo pipeline</p>
+          </div>
+          <button class="text-btn" data-dashboard-type="CC">Xem Thẻ CC</button>
+        </div>
+        <div id="ccOverviewTable" class="table-scroll"></div>
+      </div>
+
+      <div class="privacy-note">
+        <svg class="ico" aria-hidden="true"><use href="#i-cloud"/></svg>
+        <p id="storageNote">Ứng dụng hoạt động offline. Có thể kết nối Google Sheet để đồng bộ nhiều thiết bị.</p>
+      </div>
+    </section>
+
+    <section id="customersView" class="view">
+      <div class="section-heading">
+        <div>
+          <h2>Khách hàng</h2>
+          <p id="resultCount">0 hồ sơ</p>
+        </div>
+        <button id="addCustomerBtn" class="primary">
+          <svg class="ico"><use href="#i-plus"/></svg>
+          Thêm mới
+        </button>
+      </div>
+
+      <div class="filters panel">
+        <label class="search-box">
+          <svg class="ico" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="searchInput" type="search" placeholder="Tìm tên, SĐT, CCCD, cán bộ bán…">
+        </label>
+        <div class="filter-row">
+          <select id="typeFilter" aria-label="Lọc nhóm hồ sơ">
+            <option value="">Tất cả nhóm</option>
+            <option value="UPL">UPL</option>
+            <option value="CC">Thẻ CC</option>
+            <option value="SCL">SCL</option>
+            <option value="B3">KH Bước 3</option>
+          </select>
+          <select id="statusFilter" aria-label="Lọc trạng thái">
+            <option value="">Tất cả trạng thái</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="customerList" class="customer-list"></div>
+    </section>
+
+    <section id="step3View" class="view">
+      <div class="section-heading">
+        <div>
+          <h2>Khách hàng Bước 3</h2>
+          <p id="step3Count">0 khách hàng cần chăm sóc</p>
+        </div>
+        <button id="addStep3Btn" class="primary">
+          <svg class="ico"><use href="#i-plus"/></svg>
+          Thêm Bước 3
+        </button>
+      </div>
+      <div class="panel step3-tools">
+        <label class="search-box">
+          <svg class="ico" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="step3SearchInput" type="search" placeholder="Tìm tên, SĐT, CCCD, địa chỉ…">
+        </label>
+      </div>
+      <div id="step3Table" class="pipeline-sheet step3-sheet"></div>
+    </section>
+
+    <section id="backupView" class="view">
+      <div class="section-heading">
+        <div>
+          <h2>Sao lưu dữ liệu</h2>
+          <p>Chuyển dữ liệu khi đổi máy hoặc lưu trữ định kỳ</p>
+        </div>
+      </div>
+      <div class="panel backup-actions">
+        <button id="exportJsonBtn" class="primary wide">Xuất bản sao lưu JSON</button>
+        <button id="exportExcelBtn" class="secondary wide">Xuất file Excel (.xlsx)</button>
+        <label class="secondary wide file-button">
+          Nhập bản sao lưu JSON
+          <input id="importJsonInput" type="file" accept="application/json,.json">
+        </label>
+        <button id="passwordBtn" class="secondary wide">Thiết lập / đổi mật khẩu bảo vệ</button>
+        <p id="passwordStatus" class="password-status">Chưa đặt mật khẩu bảo vệ</p>
+      </div>
+      <div class="panel sync-panel">
+        <div class="sync-heading">
+          <div>
+            <h3>Đồng bộ Google Sheet</h3>
+            <p id="syncStatusText">Chưa kết nối</p>
+          </div>
+          <span id="syncStatusBadge" class="sync-badge offline">Chưa bật</span>
+        </div>
+        <label class="field">
+          <span>Link Apps Script kết thúc bằng /exec</span>
+          <input id="syncEndpoint" type="url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/.../exec">
+        </label>
+        <label class="field">
+          <span>Mã đồng bộ</span>
+          <input id="syncToken" type="password" autocomplete="new-password" placeholder="Nhập SYNC_TOKEN">
+        </label>
+        <div class="sync-actions">
+          <button id="saveSyncBtn" class="primary" type="button">Lưu kết nối</button>
+          <button id="syncNowBtn" class="secondary" type="button">Đồng bộ ngay</button>
+          <button id="disconnectSyncBtn" class="text-danger" type="button">Ngắt kết nối</button>
+        </div>
+        <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/1-25f-PqZE8RVZIwjK_eGTddRzKTwYElUWuYyNMxJgtg/edit" target="_blank" rel="noopener">Mở Google Sheet</a>
+        <small>Dữ liệu vẫn lưu trên máy. Khi mất mạng, thay đổi được giữ lại và tự đồng bộ khi có mạng.</small>
+      </div>
+      <div class="panel danger-zone">
+        <h3>Xóa toàn bộ dữ liệu</h3>
+        <p>Thao tác này xóa mọi khách hàng đã nhập trên thiết bị và không thể hoàn tác nếu chưa sao lưu.</p>
+        <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
+      </div>
+      <div class="about">
+        <strong>CRM D7 v1.7.0</strong>
+        <span>Phát triển bởi Thân Sang</span>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Điều hướng chính">
+    <button class="nav-item active" data-view="dashboardView"><svg class="ico"><use href="#i-grid"/></svg>Tổng quan</button>
+    <button class="nav-item" data-view="customersView"><svg class="ico"><use href="#i-users"/></svg>Khách hàng</button>
+    <button class="nav-item" data-view="step3View"><svg class="ico"><use href="#i-steps"/></svg>Bước 3</button>
+    <button class="nav-item" data-view="backupView"><svg class="ico"><use href="#i-box"/></svg>Sao lưu</button>
+  </nav>
+
+  <div id="formModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="formTitle">Thêm khách hàng</h2>
+          <p>Nhập thông tin theo pipeline</p>
+        </div>
+        <button class="icon-btn" type="button" data-close-modal aria-label="Đóng">
+          <svg class="ico"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <form id="customerForm">
+        <input id="recordId" type="hidden">
+        <div class="form-grid">
+          <label class="field">
+            <span>Nhóm hồ sơ *</span>
+            <select id="recordType" required>
+              <option value="UPL">UPL</option>
+              <option value="CC">Thẻ CC</option>
+              <option value="SCL">SCL</option>
+              <option value="B3">KH Bước 3</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Ngày cập nhật</span>
+            <input id="updatedDate" type="date">
+          </label>
+          <div class="field full">
+            <span>Tên khách hàng *</span>
+            <div class="autocomplete-wrap">
+              <input
+                id="customerName"
+                type="text"
+                autocomplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="customerSuggestions"
+                aria-expanded="false"
+                placeholder="Gõ tên để tìm trong khách hàng đã lưu"
+                required
+              >
+              <div id="customerSuggestions" class="suggestions" role="listbox" hidden></div>
+            </div>
+          </div>
+          <label class="field">
+            <span>Số điện thoại</span>
+            <div class="input-action">
+              <input id="phone" type="tel" inputmode="tel" autocomplete="off">
+              <a id="phoneZaloLink" class="zalo-field-btn disabled" href="#" target="_blank" rel="noopener" aria-disabled="true">Zalo</a>
+            </div>
+          </label>
+          <label class="field full">
+            <span>Email cá nhân</span>
+            <input id="personalEmail" type="email" inputmode="email" autocomplete="email" placeholder="vidu@gmail.com">
+          </label>
+          <div class="form-section-title full">
+            <strong>Thông tin CCCD</strong>
+            <small>Quét QR góc dưới mặt trước thẻ · chụp ảnh · dán mã · đọc chip NFC</small>
+          </div>
+          <div class="cccd-capture full" id="cccdCapture">
+            <article class="cccd-id" aria-live="polite">
+              <header class="cccd-id-head">
+                <span class="cccd-id-mark">VN</span>
+                <div>
+                  <em>Cộng hòa Xã hội Chủ nghĩa Việt Nam</em>
+                  <strong>Căn cước công dân</strong>
+                </div>
+                <span class="cccd-chip" aria-hidden="true"></span>
+              </header>
+              <div class="cccd-id-body">
+                <div class="cccd-photo" aria-hidden="true">
+                  <svg class="ico"><use href="#i-user"/></svg>
+                </div>
+                <div class="cccd-id-meta">
+                  <span>Họ và tên</span>
+                  <strong id="cccdCardName">Chưa quét</strong>
+                  <span>Số định danh cá nhân</span>
+                  <b id="cccdCardNumber">—</b>
+                  <small id="cccdCardMeta">QR ở góc dưới bên phải, rất nhỏ — giữ gần</small>
+                </div>
+                <div class="cccd-qr-mark" aria-hidden="true">
+                  <svg viewBox="0 0 29 29" fill="none">
+                    <rect x="1" y="1" width="9" height="9" stroke="#f3f6fa" stroke-width="2"/>
+                    <rect x="3.5" y="3.5" width="4" height="4" fill="#f3f6fa"/>
+                    <rect x="19" y="1" width="9" height="9" stroke="#f3f6fa" stroke-width="2"/>
+                    <rect x="21.5" y="3.5" width="4" height="4" fill="#f3f6fa"/>
+                    <rect x="1" y="19" width="9" height="9" stroke="#f3f6fa" stroke-width="2"/>
+                    <rect x="3.5" y="21.5" width="4" height="4" fill="#f3f6fa"/>
+                    <rect x="14" y="14" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="19" y="14" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="24" y="19" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="14" y="24" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="19" y="24" width="3" height="3" fill="#f3f6fa"/>
+                  </svg>
+                </div>
+              </div>
+            </article>
+            <div class="cccd-tools">
+              <button type="button" id="scanCccdQrBtn" class="primary cccd-tool-primary">
+                <svg class="ico"><use href="#i-scan"/></svg>
+                Quét QR CCCD
+              </button>
+              <div class="cccd-tools-row">
+                <button type="button" id="scanCccdPhotoBtn" class="secondary compact">
+                  <svg class="ico"><use href="#i-image"/></svg>
+                  Ảnh QR
+                </button>
+                <button type="button" id="scanCccdNfcBtn" class="secondary compact">
+                  <svg class="ico"><use href="#i-nfc"/></svg>
+                  NFC
+                </button>
+                <button type="button" id="scanCccdPasteBtn" class="secondary compact">
+                  <svg class="ico"><use href="#i-paste"/></svg>
+                  Dán mã
+                </button>
+              </div>
+            </div>
+          </div>
+          <label class="field">
+            <span>Số CCCD / Định danh</span>
+            <input id="cccd" type="text" inputmode="numeric" autocomplete="off" placeholder="12 số">
+          </label>
+          <label class="field">
+            <span>Số CMND cũ (9 số)</span>
+            <input id="cmndOld" type="text" inputmode="numeric" autocomplete="off" placeholder="Nếu có">
+          </label>
+          <label class="field">
+            <span>Ngày sinh</span>
+            <input id="dateOfBirth" type="date">
+          </label>
+          <label class="field">
+            <span>Giới tính</span>
+            <select id="gender">
+              <option value="">Chưa chọn</option>
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Quốc tịch</span>
+            <input id="nationality" type="text" autocomplete="off" placeholder="Việt Nam">
+          </label>
+          <label class="field">
+            <span>Ngày cấp CCCD</span>
+            <input id="idIssueDate" type="date">
+          </label>
+          <label class="field">
+            <span>Ngày hết hạn</span>
+            <input id="idExpiryDate" type="date">
+          </label>
+          <label class="field">
+            <span>Số ĐD đã hủy</span>
+            <input id="cancelledId" type="text" inputmode="numeric" autocomplete="off" placeholder="Nếu có">
+          </label>
+          <label class="field">
+            <span>CAN (6 số NFC)</span>
+            <input id="cccdCan" type="text" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="In trên mặt trước thẻ">
+          </label>
+          <div class="form-section-title full">
+            <strong>Địa chỉ khách hàng</strong>
+            <small>Danh mục hành chính Việt Nam áp dụng từ 01/07/2025 · Nơi cư trú trên CCCD</small>
+          </div>
+          <label class="field">
+            <span>Tỉnh / Thành phố</span>
+            <div class="select-search-wrap">
+              <input id="provinceSearch" type="search" autocomplete="off" placeholder="Gõ để tìm Tỉnh / Thành phố" disabled>
+              <select id="province" disabled>
+                <option value="">Đang tải danh mục…</option>
+              </select>
+            </div>
+          </label>
+          <label class="field">
+            <span>Phường / Xã / Đặc khu</span>
+            <div class="select-search-wrap">
+              <input id="wardSearch" type="search" autocomplete="off" placeholder="Gõ để tìm Phường / Xã / Đặc khu" disabled>
+              <select id="ward" disabled>
+                <option value="">Chọn Tỉnh / Thành phố trước</option>
+              </select>
+            </div>
+          </label>
+          <label class="field">
+            <span>Quận / Huyện cũ</span>
+            <input id="legacyDistrict" type="text" list="legacyDistrictSuggestions" autocomplete="off" placeholder="Không bắt buộc">
+          </label>
+          <label class="field">
+            <span>Số nhà, tên đường</span>
+            <input id="streetAddress" type="text" list="streetSuggestions" autocomplete="street-address" placeholder="Ví dụ: 123 Nguyễn Huệ">
+          </label>
+          <div id="addressPreview" class="address-preview full">Chưa nhập địa chỉ</div>
+          <div class="form-section-title full">
+            <strong>Kinh doanh</strong>
+            <small>Thông tin công ty của khách hàng</small>
+          </div>
+          <label class="field full">
+            <span>Tên công ty</span>
+            <input id="companyName" type="text" autocomplete="organization" placeholder="Ví dụ: TNHH Thương mại An Bình">
+          </label>
+          <label class="field full">
+            <span>Địa chỉ công ty</span>
+            <input id="companyAddress" type="text" autocomplete="off" placeholder="Địa chỉ trụ sở / nơi kinh doanh">
+          </label>
+          <label class="field full">
+            <span>Doanh thu công ty (triệu đồng)</span>
+            <input id="companyRevenue" type="text" inputmode="numeric" pattern="[0-9.]*" autocomplete="off" placeholder="Ví dụ: 2.400">
+          </label>
+          <label class="field full">
+            <span>Đơn vị</span>
+            <input id="unit" type="text" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Họ tên cán bộ bán</span>
+            <input id="staffName" type="text" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Chức danh</span>
+            <select id="staffRole">
+              <option value="RO">RO</option>
+              <option value="MSO">MSO</option>
+              <option value="RMB">RMB</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </label>
+          <label class="field full">
+            <span>Tình trạng hồ sơ / liên hệ *</span>
+            <select id="recordStatus" required></select>
+          </label>
+          <label class="field">
+            <span>Ngày login / đổi trạng thái</span>
+            <input id="statusDate" type="date">
+          </label>
+          <label class="field">
+            <span>Luồng trình</span>
+            <select id="flow"></select>
+          </label>
+          <label class="field full">
+            <span>Sản phẩm</span>
+            <select id="product"></select>
+          </label>
+          <label class="field full" id="amountField">
+            <span>Số tiền đề nghị vay (triệu đồng)</span>
+            <input id="amount" type="text" inputmode="numeric" pattern="[0-9.]*" autocomplete="off" placeholder="Ví dụ: 1.500">
+          </label>
+          <label class="field">
+            <span>Bảo hiểm</span>
+            <select id="insuranceType">
+              <option value="">Chưa chọn</option>
+              <option value="BHSK">BHSK</option>
+              <option value="BHKV">BHKV</option>
+            </select>
+          </label>
+          <label class="field" id="insuranceAmountField">
+            <span>Số tiền bảo hiểm (triệu đồng)</span>
+            <input id="insuranceAmount" type="text" inputmode="numeric" pattern="[0-9.]*" autocomplete="off" placeholder="Ví dụ: 12">
+          </label>
+          <label class="field full">
+            <span>Ghi chú</span>
+            <textarea id="notes" rows="4" placeholder="Mô tả chi tiết tình trạng hồ sơ…"></textarea>
+          </label>
+        </div>
+        <datalist id="legacyDistrictSuggestions"></datalist>
+        <datalist id="streetSuggestions"></datalist>
+        <div class="form-actions">
+          <button class="secondary" type="button" data-close-modal>Hủy</button>
+          <button id="saveCustomerBtn" class="primary" type="submit">Lưu khách hàng</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="passwordModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-password></div>
+    <section class="modal-sheet password-sheet" role="dialog" aria-modal="true" aria-labelledby="passwordTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="passwordTitle">Mật khẩu bảo vệ</h2>
+          <p id="passwordHint">Dùng khi xuất Excel hoặc xóa toàn bộ dữ liệu.</p>
+        </div>
+        <button class="icon-btn" type="button" data-close-password aria-label="Đóng">
+          <svg class="ico"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <form id="passwordForm">
+        <label class="field" id="currentPasswordField">
+          <span>Mật khẩu hiện tại</span>
+          <input id="currentPassword" type="password" autocomplete="current-password">
+        </label>
+        <label class="field" id="newPasswordField">
+          <span>Mật khẩu mới</span>
+          <input id="newPassword" type="password" autocomplete="new-password">
+        </label>
+        <label class="field" id="confirmPasswordField">
+          <span>Nhập lại mật khẩu mới</span>
+          <input id="confirmPassword" type="password" autocomplete="new-password">
+        </label>
+        <p id="passwordError" class="field-error" hidden></p>
+        <div class="form-actions">
+          <button class="secondary" type="button" data-close-password>Hủy</button>
+          <button id="passwordSubmitBtn" class="primary" type="submit">Lưu mật khẩu</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="lockScreen" class="lock-screen" hidden>
+    <div class="lock-card">
+      <strong>CRM D7</strong>
+      <h2>Dữ liệu đã mã hóa</h2>
+      <p>Nhập mật khẩu bảo vệ để mở CCCD, SĐT và hồ sơ khách hàng.</p>
+      <form id="unlockForm">
+        <label class="field">
+          <span>Mật khẩu</span>
+          <input id="unlockPassword" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="unlockError" class="field-error" hidden></p>
+        <button class="primary wide" type="submit">Mở khóa</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="qrScanModal" class="modal scan-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-qr></div>
+    <section class="modal-sheet scan-sheet" role="dialog" aria-modal="true" aria-labelledby="qrScanTitle">
+      <header class="scan-top">
+        <div>
+          <h2 id="qrScanTitle">Quét CCCD</h2>
+          <p id="qrScanSubtitle">Đưa góc QR mặt trước thẻ vào ô nhỏ</p>
+        </div>
+        <button class="scan-icon-btn" type="button" id="qrTorchBtn" aria-pressed="false" aria-label="Đèn pin">
+          <svg class="ico"><use href="#i-torch"/></svg>
+        </button>
+        <button class="scan-icon-btn" type="button" data-close-qr aria-label="Đóng">
+          <svg class="ico"><use href="#i-close"/></svg>
+        </button>
+      </header>
+
+      <nav class="scan-tabs" role="tablist" aria-label="Cách đọc CCCD">
+        <button type="button" class="scan-tab active" role="tab" aria-selected="true" data-scan-tab="qr">QR</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="photo">Ảnh</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="paste">Dán mã</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="nfc">NFC</button>
+      </nav>
+
+      <div class="scan-panels">
+        <div class="scan-panel is-active" data-scan-panel="qr" role="tabpanel">
+          <div class="qr-stage">
+            <video id="qrVideo" class="qr-video" playsinline muted autoplay></video>
+            <canvas id="qrCanvas" class="qr-canvas" hidden></canvas>
+            <div id="qrOverlay" class="qr-overlay">
+              <div class="id-frame" aria-hidden="true">
+                <span class="id-frame-label">Mặt trước thẻ</span>
+                <span class="qr-target"><i></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="scan-zoom" role="group" aria-label="Thu phóng">
+            <button type="button" data-zoom="1">1×</button>
+            <button type="button" data-zoom="2" class="active">2×</button>
+            <button type="button" data-zoom="3">3×</button>
+          </div>
+          <p id="qrScanHint" class="qr-hint">Đang mở camera…</p>
+        </div>
+
+        <div class="scan-panel" data-scan-panel="photo" role="tabpanel">
+          <div class="photo-drop" id="qrPhotoDrop">
+            <svg class="ico photo-drop-ico"><use href="#i-image"/></svg>
+            <strong>Chụp cận góc QR</strong>
+            <p>Mã CCCD chỉ khoảng 1 cm. Chụp mặt trước, góc dưới bên phải, đủ sáng, không bị lóa.</p>
+            <button class="primary" type="button" id="qrPickPhotoBtn">
+              <svg class="ico"><use href="#i-image"/></svg>
+              Chọn hoặc chụp ảnh
+            </button>
+          </div>
+        </div>
+
+        <div class="scan-panel" data-scan-panel="paste" role="tabpanel">
+          <label class="field scan-paste-field">
+            <span>Chuỗi QR CCCD</span>
+            <textarea id="qrPasteInput" rows="6" autocomplete="off" spellcheck="false" placeholder="0790…|CMND cũ|HỌ TÊN|ddMMyyyy|Nam|địa chỉ|ngày cấp"></textarea>
+          </label>
+          <button class="primary wide" type="button" id="qrPasteApplyBtn">Đọc mã đã dán</button>
+          <p class="qr-hint">Copy nội dung QR từ app khác rồi dán vào đây khi camera không đọc được mã nhỏ.</p>
+        </div>
+
+        <div class="scan-panel" data-scan-panel="nfc" role="tabpanel">
+          <div class="nfc-visual" aria-hidden="true">
+            <div class="nfc-wave"></div>
+            <div class="nfc-phone">
+              <span></span>
+            </div>
+            <strong>Giữ mép trên iPhone sát thẻ</strong>
+          </div>
+          <label class="field">
+            <span>CAN — 6 số in trên mặt trước thẻ (gần QR)</span>
+            <input id="nfcCanInput" type="text" inputmode="numeric" maxlength="6" placeholder="Ví dụ: 123456" autocomplete="off">
+          </label>
+          <p class="qr-hint nfc-help">
+            Chip CCCD dùng PACE/CAN. Có 6 số CAN thì không cần ngày sinh.
+            Apple ID miễn phí (Sideloadly) thường không cấp quyền NFC — khi đó dùng QR hoặc ảnh.
+          </p>
+          <p id="nfcHint" class="qr-hint"></p>
+          <button class="primary wide" type="button" id="nfcStartBtn">Bắt đầu đọc NFC</button>
+        </div>
+      </div>
+
+      <div id="cccdPreview" class="cccd-preview" hidden>
+        <div class="cccd-preview-card">
+          <p class="cccd-preview-source" id="cccdPreviewSource">Đã đọc CCCD</p>
+          <dl id="cccdPreviewFields" class="cccd-preview-fields"></dl>
+          <div class="cccd-preview-actions">
+            <button type="button" class="secondary" id="cccdPreviewRetry">Quét lại</button>
+            <button type="button" class="primary" id="cccdPreviewApply">Điền vào hồ sơ</button>
+          </div>
+        </div>
+      </div>
+      <input id="qrFileInput" type="file" accept="image/*" capture="environment" hidden>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="vendor/jsQR.js"></script>
+  <script src="demo-seed.js"></script>
+  <script src="data/vietnam-address-catalogs.js?v=1.7.0"></script>
+  <script src="main.js?v=1.7.0"></script>
+  <script>
+    (() => {
+      const installButton = document.getElementById("installBtn");
+      let deferredPrompt = null;
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {});
+        });
+      }
+
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        deferredPrompt = event;
+        installButton.hidden = false;
+      });
+
+      if (isIos && !isStandalone) installButton.hidden = false;
+
+      installButton.addEventListener("click", async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          installButton.hidden = true;
+          return;
+        }
+        if (isIos) {
+          alert("Trên iPhone: bấm nút Chia sẻ của Safari, sau đó chọn “Thêm vào Màn hình chính”.");
+        }
+      });
+
+      window.addEventListener("appinstalled", () => {
+        installButton.hidden = true;
+      });
+    })();
+  </script>
 </body>
 </html>

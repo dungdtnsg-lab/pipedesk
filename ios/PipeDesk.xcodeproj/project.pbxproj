@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000011 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppDelegate.swift */; };
 		A10000000000000000000012 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ViewController.swift */; };
+		A10000000000000000000015 /* CccdScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* CccdScanner.swift */; };
+		A10000000000000000000016 /* CccdNfcReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* CccdNfcReader.swift */; };
 		A10000000000000000000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* Assets.xcassets */; };
 		A10000000000000000000014 /* www in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* www */; };
 /* End PBXBuildFile section */
@@ -16,6 +18,9 @@
 /* Begin PBXFileReference section */
 		A10000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* CccdScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CccdScanner.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* CccdNfcReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CccdNfcReader.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* PipeDesk.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PipeDesk.entitlements; sourceTree = "<group>"; };
 		A10000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000005 /* www */ = {isa = PBXFileReference; lastKnownFileType = folder; path = www; sourceTree = "<group>"; };
@@ -46,6 +51,9 @@
 			children = (
 				A10000000000000000000001 /* AppDelegate.swift */,
 				A10000000000000000000002 /* ViewController.swift */,
+				A10000000000000000000007 /* CccdScanner.swift */,
+				A10000000000000000000008 /* CccdNfcReader.swift */,
+				A10000000000000000000009 /* PipeDesk.entitlements */,
 				A10000000000000000000003 /* Info.plist */,
 				A10000000000000000000004 /* Assets.xcassets */,
 				A10000000000000000000005 /* www */,
@@ -134,6 +142,8 @@
 			files = (
 				A10000000000000000000011 /* AppDelegate.swift in Sources */,
 				A10000000000000000000012 /* ViewController.swift in Sources */,
+				A10000000000000000000015 /* CccdScanner.swift in Sources */,
+				A10000000000000000000016 /* CccdNfcReader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -190,7 +200,8 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 166;
+				CODE_SIGN_ENTITLEMENTS = PipeDesk/PipeDesk.entitlements;
+				CURRENT_PROJECT_VERSION = 170;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PipeDesk/Info.plist;
@@ -203,8 +214,14 @@
 				OTHER_LDFLAGS = (
 					"-framework",
 					LocalAuthentication,
+					"-framework",
+					AVFoundation,
+					"-framework",
+					Vision,
+					"-weak_framework",
+					CoreNFC,
 				);
-				MARKETING_VERSION = 1.6.6;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.thansang.pipedesk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -224,7 +241,8 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 166;
+				CODE_SIGN_ENTITLEMENTS = PipeDesk/PipeDesk.entitlements;
+				CURRENT_PROJECT_VERSION = 170;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PipeDesk/Info.plist;
@@ -237,8 +255,14 @@
 				OTHER_LDFLAGS = (
 					"-framework",
 					LocalAuthentication,
+					"-framework",
+					AVFoundation,
+					"-framework",
+					Vision,
+					"-weak_framework",
+					CoreNFC,
 				);
-				MARKETING_VERSION = 1.6.6;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.thansang.pipedesk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

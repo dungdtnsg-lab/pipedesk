@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.6.8">
+  <link rel="stylesheet" href="style.css">
 
 <script>
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -48,6 +48,13 @@
     <symbol id="i-phone" viewBox="0 0 24 24"><path d="M7 3.8h3.2l1 4.2-2 1.2a12 12 0 0 0 5.6 5.6l1.2-2 4.2 1V20a1.8 1.8 0 0 1-2 1.8A16 16 0 0 1 3.2 7.8 1.8 1.8 0 0 1 5 6h2z"/></symbol>
     <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></symbol>
     <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z"/><circle cx="12" cy="11" r="2"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/></symbol>
+    <symbol id="i-nfc" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 8.5c2.8 0 5 2.2 5 7M9 12c1.5 0 2.5 1.2 2.5 3.5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M6 17l4.2-4.2 3 3L16 13l4.5 4"/></symbol>
+    <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="7" width="11" height="13" rx="1.6"/><path d="M8 10H6.4A1.4 1.4 0 0 1 5 8.6V4.4A1.4 1.4 0 0 1 6.4 3h7.2A1.4 1.4 0 0 1 15 4.4V7"/><path d="M10 3.2h4v2.2h-4z"/></symbol>
+    <symbol id="i-torch" viewBox="0 0 24 24"><path d="M9 2h6l1 5H8z"/><path d="M8 7h8v3l-1.2 2v8.5a1.5 1.5 0 0 1-1.5 1.5h-2.6A1.5 1.5 0 0 1 9.2 20.5V12L8 10z"/><path d="M12 13v4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l5 5 9-11"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c.8-3.4 3.2-5.2 7-5.2s6.2 1.8 7 5.2"/></symbol>
   </svg>
 
   <header class="app-header">
@@ -270,7 +277,7 @@
         <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
       </div>
       <div class="about">
-        <strong>CRM D7 v1.6.8</strong>
+        <strong>CRM D7 v1.7.0</strong>
         <span>Phát triển bởi Thân Sang</span>
       </div>
     </section>
@@ -339,12 +346,68 @@
             <span>Email cá nhân</span>
             <input id="personalEmail" type="email" inputmode="email" autocomplete="email" placeholder="vidu@gmail.com">
           </label>
-          <div class="form-section-title full cccd-section-head">
-            <div>
-              <strong>Thông tin CCCD</strong>
-              <small>Đầy đủ trường trên thẻ căn cước / QR CCCD</small>
+          <div class="form-section-title full">
+            <strong>Thông tin CCCD</strong>
+            <small>Quét QR góc dưới mặt trước thẻ · chụp ảnh · dán mã · đọc chip NFC</small>
+          </div>
+          <div class="cccd-capture full" id="cccdCapture">
+            <article class="cccd-id" aria-live="polite">
+              <header class="cccd-id-head">
+                <span class="cccd-id-mark">VN</span>
+                <div>
+                  <em>Cộng hòa Xã hội Chủ nghĩa Việt Nam</em>
+                  <strong>Căn cước công dân</strong>
+                </div>
+                <span class="cccd-chip" aria-hidden="true"></span>
+              </header>
+              <div class="cccd-id-body">
+                <div class="cccd-photo" aria-hidden="true">
+                  <svg class="ico"><use href="#i-user"/></svg>
+                </div>
+                <div class="cccd-id-meta">
+                  <span>Họ và tên</span>
+                  <strong id="cccdCardName">Chưa quét</strong>
+                  <span>Số định danh cá nhân</span>
+                  <b id="cccdCardNumber">—</b>
+                  <small id="cccdCardMeta">QR ở góc dưới bên phải, rất nhỏ — giữ gần</small>
+                </div>
+                <div class="cccd-qr-mark" aria-hidden="true">
+                  <svg viewBox="0 0 29 29" fill="none">
+                    <rect x="1" y="1" width="9" height="9" stroke="#f3f6fa" stroke-width="2"/>
+                    <rect x="3.5" y="3.5" width="4" height="4" fill="#f3f6fa"/>
+                    <rect x="19" y="1" width="9" height="9" stroke="#f3f6fa" stroke-width="2"/>
+                    <rect x="21.5" y="3.5" width="4" height="4" fill="#f3f6fa"/>
+                    <rect x="1" y="19" width="9" height="9" stroke="#f3f6fa" stroke-width="2"/>
+                    <rect x="3.5" y="21.5" width="4" height="4" fill="#f3f6fa"/>
+                    <rect x="14" y="14" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="19" y="14" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="24" y="19" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="14" y="24" width="3" height="3" fill="#f3f6fa"/>
+                    <rect x="19" y="24" width="3" height="3" fill="#f3f6fa"/>
+                  </svg>
+                </div>
+              </div>
+            </article>
+            <div class="cccd-tools">
+              <button type="button" id="scanCccdQrBtn" class="primary cccd-tool-primary">
+                <svg class="ico"><use href="#i-scan"/></svg>
+                Quét QR CCCD
+              </button>
+              <div class="cccd-tools-row">
+                <button type="button" id="scanCccdPhotoBtn" class="secondary compact">
+                  <svg class="ico"><use href="#i-image"/></svg>
+                  Ảnh QR
+                </button>
+                <button type="button" id="scanCccdNfcBtn" class="secondary compact">
+                  <svg class="ico"><use href="#i-nfc"/></svg>
+                  NFC
+                </button>
+                <button type="button" id="scanCccdPasteBtn" class="secondary compact">
+                  <svg class="ico"><use href="#i-paste"/></svg>
+                  Dán mã
+                </button>
+              </div>
             </div>
-            <button type="button" id="scanCccdQrBtn" class="secondary compact scan-cccd-btn">Quét QR CCCD</button>
           </div>
           <label class="field">
             <span>Số CCCD / Định danh</span>
@@ -381,6 +444,10 @@
           <label class="field">
             <span>Số ĐD đã hủy</span>
             <input id="cancelledId" type="text" inputmode="numeric" autocomplete="off" placeholder="Nếu có">
+          </label>
+          <label class="field">
+            <span>CAN (6 số NFC)</span>
+            <input id="cccdCan" type="text" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="In trên mặt trước thẻ">
           </label>
           <div class="form-section-title full">
             <strong>Địa chỉ khách hàng</strong>
@@ -543,32 +610,110 @@
     </div>
   </div>
 
-
-  <div id="qrScanModal" class="modal" aria-hidden="true">
+  <div id="qrScanModal" class="modal scan-modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-qr></div>
-    <section class="modal-sheet qr-sheet" role="dialog" aria-modal="true" aria-labelledby="qrScanTitle">
-      <div class="modal-header">
+    <section class="modal-sheet scan-sheet" role="dialog" aria-modal="true" aria-labelledby="qrScanTitle">
+      <header class="scan-top">
         <div>
-          <h2 id="qrScanTitle">Quét QR CCCD</h2>
-          <p>Đưa mã QR mặt trước thẻ vào khung hình</p>
+          <h2 id="qrScanTitle">Quét CCCD</h2>
+          <p id="qrScanSubtitle">Đưa góc QR mặt trước thẻ vào ô nhỏ</p>
         </div>
-        <button class="icon-btn" type="button" data-close-qr aria-label="Đóng">
+        <button class="scan-icon-btn" type="button" id="qrTorchBtn" aria-pressed="false" aria-label="Đèn pin">
+          <svg class="ico"><use href="#i-torch"/></svg>
+        </button>
+        <button class="scan-icon-btn" type="button" data-close-qr aria-label="Đóng">
           <svg class="ico"><use href="#i-close"/></svg>
         </button>
+      </header>
+
+      <nav class="scan-tabs" role="tablist" aria-label="Cách đọc CCCD">
+        <button type="button" class="scan-tab active" role="tab" aria-selected="true" data-scan-tab="qr">QR</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="photo">Ảnh</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="paste">Dán mã</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="nfc">NFC</button>
+      </nav>
+
+      <div class="scan-panels">
+        <div class="scan-panel is-active" data-scan-panel="qr" role="tabpanel">
+          <div class="qr-stage">
+            <video id="qrVideo" class="qr-video" playsinline muted autoplay></video>
+            <canvas id="qrCanvas" class="qr-canvas" hidden></canvas>
+            <div id="qrOverlay" class="qr-overlay">
+              <div class="id-frame" aria-hidden="true">
+                <span class="id-frame-label">Mặt trước thẻ</span>
+                <span class="qr-target"><i></i></span>
+              </div>
+            </div>
+          </div>
+          <div class="scan-zoom" role="group" aria-label="Thu phóng">
+            <button type="button" data-zoom="1">1×</button>
+            <button type="button" data-zoom="2" class="active">2×</button>
+            <button type="button" data-zoom="3">3×</button>
+          </div>
+          <p id="qrScanHint" class="qr-hint">Đang mở camera…</p>
+        </div>
+
+        <div class="scan-panel" data-scan-panel="photo" role="tabpanel">
+          <div class="photo-drop" id="qrPhotoDrop">
+            <svg class="ico photo-drop-ico"><use href="#i-image"/></svg>
+            <strong>Chụp cận góc QR</strong>
+            <p>Mã CCCD chỉ khoảng 1 cm. Chụp mặt trước, góc dưới bên phải, đủ sáng, không bị lóa.</p>
+            <button class="primary" type="button" id="qrPickPhotoBtn">
+              <svg class="ico"><use href="#i-image"/></svg>
+              Chọn hoặc chụp ảnh
+            </button>
+          </div>
+        </div>
+
+        <div class="scan-panel" data-scan-panel="paste" role="tabpanel">
+          <label class="field scan-paste-field">
+            <span>Chuỗi QR CCCD</span>
+            <textarea id="qrPasteInput" rows="6" autocomplete="off" spellcheck="false" placeholder="0790…|CMND cũ|HỌ TÊN|ddMMyyyy|Nam|địa chỉ|ngày cấp"></textarea>
+          </label>
+          <button class="primary wide" type="button" id="qrPasteApplyBtn">Đọc mã đã dán</button>
+          <p class="qr-hint">Copy nội dung QR từ app khác rồi dán vào đây khi camera không đọc được mã nhỏ.</p>
+        </div>
+
+        <div class="scan-panel" data-scan-panel="nfc" role="tabpanel">
+          <div class="nfc-visual" aria-hidden="true">
+            <div class="nfc-wave"></div>
+            <div class="nfc-phone">
+              <span></span>
+            </div>
+            <strong>Giữ mép trên iPhone sát thẻ</strong>
+          </div>
+          <label class="field">
+            <span>CAN — 6 số in trên mặt trước thẻ (gần QR)</span>
+            <input id="nfcCanInput" type="text" inputmode="numeric" maxlength="6" placeholder="Ví dụ: 123456" autocomplete="off">
+          </label>
+          <p class="qr-hint nfc-help">
+            Chip CCCD dùng PACE/CAN. Có 6 số CAN thì không cần ngày sinh.
+            Apple ID miễn phí (Sideloadly) thường không cấp quyền NFC — khi đó dùng QR hoặc ảnh.
+          </p>
+          <p id="nfcHint" class="qr-hint"></p>
+          <button class="primary wide" type="button" id="nfcStartBtn">Bắt đầu đọc NFC</button>
+        </div>
       </div>
-      <div id="qrReader" class="qr-reader"></div>
-      <p id="qrScanHint" class="qr-hint">Đang mở camera…</p>
-      <div class="form-actions">
-        <button class="secondary" type="button" data-close-qr>Hủy</button>
+
+      <div id="cccdPreview" class="cccd-preview" hidden>
+        <div class="cccd-preview-card">
+          <p class="cccd-preview-source" id="cccdPreviewSource">Đã đọc CCCD</p>
+          <dl id="cccdPreviewFields" class="cccd-preview-fields"></dl>
+          <div class="cccd-preview-actions">
+            <button type="button" class="secondary" id="cccdPreviewRetry">Quét lại</button>
+            <button type="button" class="primary" id="cccdPreviewApply">Điền vào hồ sơ</button>
+          </div>
+        </div>
       </div>
+      <input id="qrFileInput" type="file" accept="image/*" capture="environment" hidden>
     </section>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="vendor/jsQR.js"></script>
   <script src="demo-seed.js"></script>
-  <script src="data/vietnam-address-catalogs.js?v=1.6.8"></script>
-  <script src="main.js?v=1.6.8"></script>
+  <script src="data/vietnam-address-catalogs.js"></script>
+  <script src="main.js"></script>
   <script>
     (() => {
       const installButton = document.getElementById("installBtn");
