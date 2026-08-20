@@ -1,7 +1,8 @@
 import UIKit
 import WebKit
+import LocalAuthentication
 
-final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
+final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler {
     private var webView: WKWebView!
     private var fileDestination: URL?
 
@@ -18,6 +19,8 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         config.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         config.websiteDataStore = .default()
+        config.userContentController.add(self, name: "saveFile")
+        config.userContentController.add(self, name: "biometric")
 
         let webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -117,7 +120,67 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
 
     func downloadDidFinish(_ download: WKDownload) {
         guard let dest = fileDestination else { return }
-        let sheet = UIActivityViewController(activityItems: [dest], applicationActivities: nil)
+        shareFile(dest)
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "biometric" {
+            let reason: String
+            if let body = message.body as? [String: Any] {
+                reason = String(body["reason"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                reason = ""
+            }
+            authenticateOwner(reason: reason.isEmpty ? "Xác nhận xóa lead" : reason)
+            return
+        }
+        guard message.name == "saveFile",
+              let body = message.body as? [String: Any],
+              let filename = body["filename"] as? String,
+              let base64 = body["base64"] as? String,
+              let data = Data(base64Encoded: base64) else { return }
+        let dest = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(filename)
+        do {
+            try data.write(to: dest, options: .atomic)
+            DispatchQueue.main.async { self.shareFile(dest) }
+        } catch {
+            return
+        }
+    }
+
+    private func authenticateOwner(reason: String) {
+        let context = LAContext()
+        context.localizedCancelTitle = "Hủy"
+        context.localizedFallbackTitle = "Dùng mật mã máy"
+        var authError: NSError?
+        let policy: LAPolicy
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &authError) {
+            policy = .deviceOwnerAuthenticationWithBiometrics
+        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) {
+            policy = .deviceOwnerAuthentication
+        } else {
+            replyBiometric(ok: false, error: authError?.localizedDescription ?? "unavailable")
+            return
+        }
+        context.evaluatePolicy(policy, localizedReason: reason) { success, error in
+            DispatchQueue.main.async {
+                self.replyBiometric(ok: success, error: error?.localizedDescription)
+            }
+        }
+    }
+
+    private func replyBiometric(ok: Bool, error: String?) {
+        let escaped = (error ?? "")
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: " ")
+        let js = "window.__pipedeskBiometricResult && window.__pipedeskBiometricResult(\(ok ? "true" : "false"), \"\(escaped)\")"
+        webView?.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func shareFile(_ url: URL) {
+        let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         sheet.popoverPresentationController?.sourceView = view
         present(sheet, animated: true)
     }
@@ -128,7 +191,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         initiatedByFrame frame: WKFrameInfo,
         completionHandler: @escaping () -> Void
     ) {
-        let alert = UIAlertController(title: "PipeDesk", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "CRM D7", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
         present(alert, animated: true)
     }
@@ -139,9 +202,29 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         initiatedByFrame frame: WKFrameInfo,
         completionHandler: @escaping (Bool) -> Void
     ) {
-        let alert = UIAlertController(title: "PipeDesk", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "CRM D7", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Hủy", style: .cancel) { _ in completionHandler(false) })
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+        present(alert, animated: true)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        runJavaScriptTextInputPanelWithPrompt prompt: String,
+        defaultText: String?,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping (String?) -> Void
+    ) {
+        let alert = UIAlertController(title: "CRM D7", message: prompt, preferredStyle: .alert)
+        alert.addTextField { field in
+            field.text = defaultText
+            let lower = prompt.lowercased()
+            field.isSecureTextEntry = lower.contains("mật") || lower.contains("password")
+        }
+        alert.addAction(UIAlertAction(title: "Hủy", style: .cancel) { _ in completionHandler(nil) })
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            completionHandler(alert.textFields?.first?.text)
+        })
         present(alert, animated: true)
     }
 }

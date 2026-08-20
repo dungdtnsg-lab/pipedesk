@@ -2,8 +2,12 @@
   const KEY = "pipedesk_records_v1";
   const LEGACY_KEY = "vpbank_crm_records_v1";
   try {
-    const existing = JSON.parse(localStorage.getItem(KEY) || "[]");
-    if (Array.isArray(existing) && existing.length) return;
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const existing = JSON.parse(raw);
+      if (existing && existing.enc === 1) return;
+      if (Array.isArray(existing) && existing.length) return;
+    }
     const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "[]");
     if (Array.isArray(legacy) && legacy.length) {
       localStorage.setItem(KEY, JSON.stringify(legacy));

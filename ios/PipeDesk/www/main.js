@@ -6,7 +6,8 @@
   const SYNC_CONFIG_KEY = "pipedesk_google_sync_v1";
   const SYNC_DELETIONS_KEY = "pipedesk_sync_deletions_v1";
   const SYNC_LAST_SUCCESS_KEY = "pipedesk_sync_last_success_v1";
-  const SCHEMA_VERSION = 5;
+  const SCHEMA_VERSION = 6;
+  const VAULT_ITERATIONS = 100000;
   const DEFAULT_STAFF_NAME = "Thân Trọng Sang";
   const DEFAULT_UNIT = "HH - D7 1";
   const DEFAULT_STAFF_ROLE = "RO";
@@ -110,8 +111,12 @@
     .replaceAll("'", "&#039;");
 
   migrateLegacyStorage();
-  let records = loadRecords();
-  let deletions = loadDeletions();
+  let records = [];
+  let deletions = [];
+  let vaultKey = null;
+  let vaultSalt = null;
+  let vaultLocked = false;
+  let persistChain = Promise.resolve();
   let syncTimer = null;
   let syncInProgress = false;
   let provinces = [];
@@ -173,16 +178,99 @@
     };
   }
 
-  function loadRecords() {
+  function bytesToB64(bytes) {
+    let binary = "";
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    view.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return btoa(binary);
+  }
+
+  function b64ToBytes(value) {
+    const binary = atob(String(value || ""));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function peekStore() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      return Array.isArray(parsed) ? parsed.map(normalizeRecord) : [];
+      if (parsed && parsed.enc === 1 && parsed.data) return { encrypted: true, vault: parsed };
+      if (Array.isArray(parsed)) return { encrypted: false, records: parsed };
+      return { encrypted: false, records: [] };
     } catch {
-      return [];
+      return { encrypted: false, records: [] };
     }
   }
 
+  async function deriveVaultKey(password, salt, iterations = VAULT_ITERATIONS) {
+    const baseKey = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(password),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  async function encryptVaultPayload(payload, key) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(JSON.stringify(payload));
+    const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+    return { iv, data: new Uint8Array(cipher) };
+  }
+
+  async function decryptVaultPayload(vault, key) {
+    const iv = b64ToBytes(vault.iv);
+    const data = b64ToBytes(vault.data);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+    const parsed = JSON.parse(new TextDecoder().decode(plain));
+    return {
+      records: Array.isArray(parsed.records) ? parsed.records : [],
+      deletions: Array.isArray(parsed.deletions) ? parsed.deletions : []
+    };
+  }
+
+  async function persistStore() {
+    if (vaultLocked) return;
+    if (vaultKey && vaultSalt && globalThis.crypto?.subtle) {
+      const encrypted = await encryptVaultPayload({
+        records,
+        deletions,
+        schemaVersion: SCHEMA_VERSION
+      }, vaultKey);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        enc: 1,
+        alg: "AES-GCM",
+        kdf: "PBKDF2",
+        hash: "SHA-256",
+        iter: VAULT_ITERATIONS,
+        salt: bytesToB64(vaultSalt),
+        iv: bytesToB64(encrypted.iv),
+        data: bytesToB64(encrypted.data)
+      }));
+      localStorage.setItem(SYNC_DELETIONS_KEY, "[]");
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(SYNC_DELETIONS_KEY, JSON.stringify(deletions));
+  }
+
+  function loadRecords() {
+    const peek = peekStore();
+    if (peek.encrypted) return [];
+    return peek.records.map(normalizeRecord);
+  }
+
   function loadDeletions() {
+    if (peekStore().encrypted) return [];
     try {
       const parsed = JSON.parse(localStorage.getItem(SYNC_DELETIONS_KEY) || "[]");
       return Array.isArray(parsed) ? parsed : [];
@@ -192,9 +280,53 @@
   }
 
   function saveRecords(options = {}) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    localStorage.setItem(SYNC_DELETIONS_KEY, JSON.stringify(deletions));
-    if (options.scheduleSync !== false) scheduleSync();
+    persistChain = persistChain.then(() => persistStore()).catch(() => {});
+    if (options.scheduleSync !== false && !vaultLocked) scheduleSync();
+  }
+
+  async function activateVaultFromPassword(password) {
+    if (!globalThis.crypto?.subtle) throw new Error("no-crypto");
+    const peek = peekStore();
+    if (peek.encrypted && !vaultKey) {
+      const salt = b64ToBytes(peek.vault.salt);
+      const key = await deriveVaultKey(password, salt, peek.vault.iter || VAULT_ITERATIONS);
+      const plain = await decryptVaultPayload(peek.vault, key);
+      records = plain.records.map(normalizeRecord);
+      deletions = plain.deletions;
+      vaultKey = key;
+      vaultSalt = salt;
+      vaultLocked = false;
+      return;
+    }
+    vaultSalt = crypto.getRandomValues(new Uint8Array(16));
+    vaultKey = await deriveVaultKey(password, vaultSalt);
+    vaultLocked = false;
+    await persistStore();
+  }
+
+  function showLockScreen() {
+    const lock = $("#lockScreen");
+    if (!lock) return;
+    lock.hidden = false;
+    document.body.classList.add("is-locked");
+    setTimeout(() => $("#unlockPassword")?.focus(), 80);
+  }
+
+  function hideLockScreen() {
+    const lock = $("#lockScreen");
+    if (lock) lock.hidden = true;
+    document.body.classList.remove("is-locked");
+  }
+
+  function refreshUnlockedUi() {
+    hideLockScreen();
+    setupSavedAddressSuggestions();
+    setupStatusFilter();
+    updatePasswordStatus();
+    renderDashboard();
+    renderCustomers();
+    renderStep3();
+    updateSyncUi();
   }
 
   function loadSyncConfig() {
@@ -260,7 +392,7 @@
   }
 
   function scheduleSync(delay = 1400) {
-    if (!isSyncConfigured()) return;
+    if (vaultLocked || !isSyncConfigured()) return;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => syncNow({ silent: true }), delay);
   }
@@ -981,7 +1113,6 @@
     const period = dashboardPeriod();
     const byType = { UPL: 0, CC: 0, SCL: 0, B3: 0 };
     const amounts = { UPL: 0, SCL: 0 };
-    const statusMap = new Map();
     let disbursedAmount = 0;
     let activeCcCount = 0;
 
@@ -992,8 +1123,6 @@
         disbursedAmount += Number(record.amount) || 0;
       }
       if (record.type === "CC" && isActiveCcStatus(record.status)) activeCcCount += 1;
-      const status = record.status || "Chưa cập nhật";
-      statusMap.set(status, (statusMap.get(status) || 0) + 1);
     }
 
     $("#todayText").textContent = period.label;
@@ -1018,28 +1147,6 @@
       hideStaff: true,
       emptyText: period.mode === "all" ? "Chưa có hồ sơ Thẻ CC." : "Không có hồ sơ Thẻ CC trong kỳ."
     });
-
-    const statusBox = $("#statusBreakdown");
-    if (!overviewRecords.length) {
-      statusBox.className = "status-breakdown empty-state compact-empty";
-      statusBox.textContent = period.mode === "all"
-        ? "Chưa có dữ liệu để thống kê."
-        : "Không có dữ liệu trong khoảng thời gian đã chọn.";
-      return;
-    }
-
-    const sorted = [...statusMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7);
-    const max = Math.max(...sorted.map((entry) => entry[1]), 1);
-    statusBox.className = "status-breakdown";
-    statusBox.innerHTML = sorted.map(([label, count]) => `
-      <div class="status-row ${isCancelStatus(label) ? "is-cancel" : ""}">
-        <div>
-          <div class="status-label"><span>${escapeHtml(label)}</span><span>${Math.round(count / overviewRecords.length * 100)}%</span></div>
-          <div class="bar-track"><div class="bar-fill" style="width:${count / max * 100}%"></div></div>
-        </div>
-        <div class="status-count">${count}</div>
-      </div>
-    `).join("");
   }
 
   function allStatuses() {
@@ -1317,10 +1424,102 @@
     saveButton.disabled = false;
   }
 
-  function deleteRecord(id) {
+  function hasNativeBiometric() {
+    return Boolean(globalThis.webkit?.messageHandlers?.biometric?.postMessage);
+  }
+
+  function requestNativeBiometric(reason) {
+    return new Promise((resolve) => {
+      const handler = globalThis.webkit?.messageHandlers?.biometric;
+      if (!handler?.postMessage) {
+        resolve({ ok: false, unavailable: true });
+        return;
+      }
+      const timer = setTimeout(() => resolve({ ok: false, error: "timeout" }), 60000);
+      globalThis.__pipedeskBiometricResult = (ok, error) => {
+        clearTimeout(timer);
+        resolve({ ok: Boolean(ok), error: error || "" });
+      };
+      handler.postMessage({ reason });
+    });
+  }
+
+  async function requestPlatformBiometric() {
+    const cred = globalThis.PublicKeyCredential;
+    if (!cred || !navigator.credentials?.get || !location.hostname) {
+      return { ok: false, unavailable: true };
+    }
+    try {
+      const available = await cred.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!available) return { ok: false, unavailable: true };
+      const storedId = localStorage.getItem("pipedesk_webauthn_id_v1");
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      if (!storedId) {
+        const created = await navigator.credentials.create({
+          publicKey: {
+            challenge,
+            rp: { name: "CRM D7" },
+            user: {
+              id: crypto.getRandomValues(new Uint8Array(16)),
+              name: "crm-d7-owner",
+              displayName: "CRM D7"
+            },
+            pubKeyCredParams: [
+              { type: "public-key", alg: -7 },
+              { type: "public-key", alg: -257 }
+            ],
+            authenticatorSelection: {
+              authenticatorAttachment: "platform",
+              userVerification: "required"
+            },
+            timeout: 60000
+          }
+        });
+        if (!created?.rawId) return { ok: false };
+        localStorage.setItem("pipedesk_webauthn_id_v1", bytesToB64(new Uint8Array(created.rawId)));
+        return { ok: true };
+      }
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          allowCredentials: [{ type: "public-key", id: b64ToBytes(storedId) }],
+          userVerification: "required",
+          timeout: 60000
+        }
+      });
+      return { ok: Boolean(assertion) };
+    } catch (error) {
+      if (error?.name === "NotAllowedError") return { ok: false, cancelled: true };
+      return { ok: false, unavailable: true };
+    }
+  }
+
+  async function confirmDeleteLead(record) {
+    const reason = `Xóa lead “${record.customerName || "khách hàng"}”`;
+    if (hasNativeBiometric()) {
+      const native = await requestNativeBiometric(reason);
+      if (native.ok) return true;
+      showToast("Cần Face ID để xóa lead");
+      return false;
+    }
+    const platform = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      ? await requestPlatformBiometric()
+      : { ok: false, unavailable: true };
+    if (platform.ok) return true;
+    if (platform.cancelled) {
+      showToast("Đã hủy Face ID — không xóa lead");
+      return false;
+    }
+    const authorized = await (hasProtectionPassword()
+      ? openPasswordModal("unlock", { actionLabel: "xóa lead" })
+      : openPasswordModal("setup", { hint: "Thiết bị không có Face ID. Đặt mật khẩu để xác nhận xóa lead." }));
+    return Boolean(authorized);
+  }
+
+  async function deleteRecord(id) {
     const record = records.find((item) => item.id === id);
     if (!record) return;
-    if (!confirm(`Xóa hồ sơ của “${record.customerName}”?`)) return;
+    if (!await confirmDeleteLead(record)) return;
     const deletedAt = new Date().toISOString();
     deletions = deletions.filter((item) => item.id !== id);
     deletions.push({ id, type: record.type, deletedAt, updatedAt: deletedAt });
@@ -1334,25 +1533,55 @@
   }
 
   function downloadFile(filename, content, mime) {
-    const blob = new Blob([content], { type: mime });
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
+    const native = globalThis.webkit?.messageHandlers?.saveFile;
+    if (native?.postMessage) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || "");
+        native.postMessage({
+          filename,
+          mime,
+          base64: dataUrl.split(",")[1] || ""
+        });
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
+    link.rel = "noopener";
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1200);
   }
 
-  function exportJson() {
+  async function exportJson() {
+    await persistChain;
+    if (vaultKey) {
+      await persistChain;
+      const vault = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      downloadFile(`crm-d7-backup-${todayIso()}.json`, JSON.stringify({
+        app: "CRM D7",
+        encrypted: true,
+        alg: "AES-GCM",
+        schemaVersion: SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        vault
+      }, null, 2), "application/json");
+      showToast("Đã tạo bản sao lưu JSON đã mã hóa");
+      return;
+    }
     const payload = {
-      app: "PipeDesk",
+      app: "CRM D7",
       schemaVersion: SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
       records
     };
-    downloadFile(`pipedesk-backup-${todayIso()}.json`, JSON.stringify(payload, null, 2), "application/json");
+    downloadFile(`crm-d7-backup-${todayIso()}.json`, JSON.stringify(payload, null, 2), "application/json");
     showToast("Đã tạo bản sao lưu JSON");
   }
 
@@ -1566,52 +1795,141 @@
     return Array.from(String(password)).reduce((hash, character) => ((hash * 31) + character.charCodeAt(0)) >>> 0, 2166136261).toString(16);
   }
 
-  async function configurePassword(requireCurrent = true) {
-    const currentHash = localStorage.getItem(PASSWORD_HASH_KEY);
-    if (currentHash && requireCurrent) {
-      const current = prompt("Nhập mật khẩu hiện tại:");
-      if (current === null) return false;
-      if (await hashPassword(current) !== currentHash) {
-        alert("Mật khẩu hiện tại không đúng.");
-        return false;
-      }
-    }
-    const password = prompt("Tạo mật khẩu bảo vệ (tối thiểu 4 ký tự):");
-    if (password === null) return false;
-    if (password.length < 4) {
-      alert("Mật khẩu phải có ít nhất 4 ký tự.");
-      return false;
-    }
-    const confirmation = prompt("Nhập lại mật khẩu mới:");
-    if (confirmation !== password) {
-      alert("Hai lần nhập mật khẩu không khớp.");
-      return false;
-    }
-    localStorage.setItem(PASSWORD_HASH_KEY, await hashPassword(password));
-    showToast("Đã lưu mật khẩu bảo vệ");
-    return true;
+  let passwordWaiter = null;
+  let passwordMode = "setup";
+
+  function hasProtectionPassword() {
+    return Boolean(localStorage.getItem(PASSWORD_HASH_KEY));
   }
 
-  async function authorizeProtectedAction(actionLabel) {
-    const currentHash = localStorage.getItem(PASSWORD_HASH_KEY);
-    if (!currentHash) {
-      alert(`Chưa có mật khẩu bảo vệ. Hãy tạo mật khẩu trước khi ${actionLabel}.`);
-      return configurePassword(false);
+  function updatePasswordStatus() {
+    const el = $("#passwordStatus");
+    if (!el) return;
+    const set = hasProtectionPassword();
+    el.textContent = set
+      ? "Đã mã hóa AES-256 — CCCD, SĐT, email, địa chỉ được mã hóa trên máy"
+      : "Chưa mã hóa. Đặt mật khẩu để mã hóa hồ sơ nhạy cảm trên máy.";
+    el.classList.toggle("set", set);
+  }
+
+  function showPasswordError(message) {
+    const el = $("#passwordError");
+    el.hidden = !message;
+    el.textContent = message || "";
+  }
+
+  function closePasswordModal(result = false) {
+    $("#passwordModal").classList.remove("open");
+    $("#passwordModal").setAttribute("aria-hidden", "true");
+    const resolve = passwordWaiter;
+    passwordWaiter = null;
+    if (resolve) resolve(result);
+  }
+
+  function openPasswordModal(mode, options = {}) {
+    passwordMode = mode;
+    showPasswordError("");
+    $("#currentPassword").value = "";
+    $("#newPassword").value = "";
+    $("#confirmPassword").value = "";
+    const needCurrent = mode === "change" || mode === "unlock" || mode === "unlockImport";
+    const needNew = mode === "setup" || mode === "change";
+    $("#currentPasswordField").hidden = !needCurrent;
+    $("#newPasswordField").hidden = !needNew;
+    $("#confirmPasswordField").hidden = !needNew;
+    if (mode === "unlockImport") {
+      $("#passwordTitle").textContent = "Giải mã bản sao lưu";
+      $("#passwordHint").textContent = "Nhập mật khẩu của file sao lưu đã mã hóa.";
+      $("#passwordSubmitBtn").textContent = "Giải mã";
+    } else if (mode === "unlock") {
+      $("#passwordTitle").textContent = "Xác nhận mật khẩu";
+      $("#passwordHint").textContent = `Nhập mật khẩu để ${options.actionLabel || "tiếp tục"}.`;
+      $("#passwordSubmitBtn").textContent = "Xác nhận";
+    } else if (mode === "change") {
+      $("#passwordTitle").textContent = "Đổi mật khẩu bảo vệ";
+      $("#passwordHint").textContent = "Nhập mật khẩu hiện tại, rồi đặt mật khẩu mới (tối thiểu 4 ký tự).";
+      $("#passwordSubmitBtn").textContent = "Đổi mật khẩu";
+    } else {
+      $("#passwordTitle").textContent = "Thiết lập mật khẩu bảo vệ";
+      $("#passwordHint").textContent = options.hint
+        || "Mật khẩu dùng để mã hóa CCCD, SĐT, email và hồ sơ trên máy (AES-256).";
+      $("#passwordSubmitBtn").textContent = "Lưu mật khẩu";
     }
-    const password = prompt(`Nhập mật khẩu để ${actionLabel}:`);
-    if (password === null) return false;
-    if (await hashPassword(password) !== currentHash) {
-      alert("Mật khẩu không đúng.");
-      return false;
+    $("#passwordModal").classList.add("open");
+    $("#passwordModal").setAttribute("aria-hidden", "false");
+    setTimeout(() => {
+      (needCurrent ? $("#currentPassword") : $("#newPassword"))?.focus();
+    }, 80);
+    return new Promise((resolve) => {
+      passwordWaiter = resolve;
+    });
+  }
+
+  function configurePassword() {
+    return openPasswordModal(hasProtectionPassword() ? "change" : "setup");
+  }
+
+  function authorizeProtectedAction(actionLabel) {
+    if (!hasProtectionPassword()) {
+      return openPasswordModal("setup", {
+        hint: `Cần mật khẩu bảo vệ trước khi ${actionLabel}.`
+      });
     }
-    return true;
+    return openPasswordModal("unlock", { actionLabel });
+  }
+
+  async function submitPasswordForm(event) {
+    event.preventDefault();
+    const current = $("#currentPassword").value;
+    const next = $("#newPassword").value;
+    const confirmation = $("#confirmPassword").value;
+    const storedHash = localStorage.getItem(PASSWORD_HASH_KEY);
+    if (passwordMode === "unlockImport") {
+      if (!current) return showPasswordError("Nhập mật khẩu.");
+      closePasswordModal({ ok: true, current });
+      return;
+    }
+    if (passwordMode === "unlock") {
+      if (!current) return showPasswordError("Nhập mật khẩu.");
+      try {
+        if (!vaultKey) await activateVaultFromPassword(current);
+        else if (storedHash && await hashPassword(current) !== storedHash) {
+          showPasswordError("Mật khẩu không đúng.");
+          return;
+        }
+      } catch {
+        showPasswordError("Mật khẩu không đúng.");
+        return;
+      }
+      closePasswordModal({ ok: true, current });
+      return;
+    }
+    if (passwordMode === "change") {
+      if (!current) return showPasswordError("Nhập mật khẩu hiện tại.");
+      if (storedHash && await hashPassword(current) !== storedHash) {
+        showPasswordError("Mật khẩu hiện tại không đúng.");
+        return;
+      }
+    }
+    if (next.length < 4) return showPasswordError("Mật khẩu phải có ít nhất 4 ký tự.");
+    if (next !== confirmation) return showPasswordError("Hai lần nhập mật khẩu không khớp.");
+    localStorage.setItem(PASSWORD_HASH_KEY, await hashPassword(next));
+    try {
+      await activateVaultFromPassword(next);
+    } catch {
+      showPasswordError("Không mã hóa được trên trình duyệt này.");
+      return;
+    }
+    updatePasswordStatus();
+    closePasswordModal({ ok: true, next });
+    showToast(passwordMode === "change" ? "Đã đổi mật khẩu và mã hóa lại dữ liệu" : "Đã mã hóa dữ liệu nhạy cảm trên máy");
   }
 
   async function exportExcel() {
     if (!await authorizeProtectedAction("xuất file Excel")) return;
     const workbook = buildExcelWorkbook();
     downloadFile(
-      `pipedesk-${todayIso()}.xlsx`,
+      `crm-d7-${todayIso()}.xlsx`,
       workbook,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
@@ -1632,7 +1950,26 @@
           reader.readAsText(file, "utf-8");
         });
       const payload = JSON.parse(fileText);
-      const incoming = Array.isArray(payload) ? payload : payload.records;
+      let incoming;
+      if (payload?.encrypted && payload.vault?.data) {
+        const unlocked = await openPasswordModal("unlockImport", { actionLabel: "giải mã bản sao lưu" });
+        if (!unlocked) return;
+        try {
+          const key = await deriveVaultKey(
+            unlocked.current,
+            b64ToBytes(payload.vault.salt),
+            payload.vault.iter || VAULT_ITERATIONS
+          );
+          const plain = await decryptVaultPayload(payload.vault, key);
+          incoming = plain.records;
+          if (Array.isArray(plain.deletions)) deletions = plain.deletions;
+        } catch {
+          alert("Không giải mã được. Sai mật khẩu hoặc file hỏng.");
+          return;
+        }
+      } else {
+        incoming = Array.isArray(payload) ? payload : payload.records;
+      }
       if (!Array.isArray(incoming)) throw new Error("invalid");
       if (!confirm(`Nhập ${incoming.length} hồ sơ và thay thế dữ liệu hiện tại?`)) return;
       const importedIds = new Set(incoming.map((record) => record.id).filter(Boolean));
@@ -1645,6 +1982,7 @@
       }
       records = incoming.map(normalizeRecord);
       saveRecords({ scheduleSync: false });
+      await persistChain;
       setupSavedAddressSuggestions();
       setupStatusFilter();
       renderDashboard();
@@ -1774,7 +2112,27 @@
     });
     $("#exportJsonBtn").addEventListener("click", exportJson);
     $("#exportExcelBtn").addEventListener("click", exportExcel);
-    $("#passwordBtn").addEventListener("click", () => configurePassword(true));
+    $("#passwordBtn").addEventListener("click", () => configurePassword());
+    $("#passwordForm").addEventListener("submit", submitPasswordForm);
+    $$("[data-close-password]").forEach((button) => button.addEventListener("click", () => closePasswordModal(false)));
+    $("#unlockForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = $("#unlockPassword").value;
+      const error = $("#unlockError");
+      if (!password) {
+        error.hidden = false;
+        error.textContent = "Nhập mật khẩu.";
+        return;
+      }
+      try {
+        await activateVaultFromPassword(password);
+        refreshUnlockedUi();
+        showToast("Đã mở khóa dữ liệu");
+      } catch {
+        error.hidden = false;
+        error.textContent = "Mật khẩu không đúng.";
+      }
+    });
     $("#importJsonInput").addEventListener("change", importJson);
     $("#clearAllBtn").addEventListener("click", clearAll);
     $("#saveSyncBtn").addEventListener("click", saveSyncConfig);
@@ -1789,7 +2147,9 @@
       if (!event.target.closest(".autocomplete-wrap")) hideCustomerSuggestions();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && $("#formModal").classList.contains("open")) closeForm();
+      if (event.key !== "Escape") return;
+      if ($("#passwordModal").classList.contains("open")) closePasswordModal(false);
+      else if ($("#formModal").classList.contains("open")) closeForm();
     });
   }
 
@@ -1797,13 +2157,24 @@
   $("#overviewMonth").value = currentMonthValue();
   updateOverviewPeriodControls();
   updatePhoneActions();
-  setupStatusFilter();
-  setupSavedAddressSuggestions();
   bindEvents();
-  updateSyncUi();
-  loadAdministrativeCatalogs();
-  renderDashboard();
-  renderCustomers();
-  renderStep3();
-  scheduleSync(900);
+  records = loadRecords();
+  deletions = loadDeletions();
+  vaultLocked = peekStore().encrypted;
+  if (vaultLocked) {
+    showLockScreen();
+    updatePasswordStatus();
+    updateSyncUi();
+    loadAdministrativeCatalogs();
+  } else {
+    setupStatusFilter();
+    setupSavedAddressSuggestions();
+    updatePasswordStatus();
+    updateSyncUi();
+    loadAdministrativeCatalogs();
+    renderDashboard();
+    renderCustomers();
+    renderStep3();
+    scheduleSync(900);
+  }
 })();

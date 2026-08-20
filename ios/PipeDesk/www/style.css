@@ -18,8 +18,9 @@
   --warn-soft: #f4ead4;
   --danger: #9f2a2a;
   --danger-soft: #f8e8e8;
-  --info: #2a4a6b;
-  --info-soft: #e6eef5;
+  --cc: #7a1f3a;
+  --cc-fg: #fff8f9;
+  --cc-soft: #f7e9ee;
   --zalo: #0068ff;
 
   --radius-xs: 4px;
@@ -127,8 +128,10 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   border-radius: var(--radius-md);
   background: #163a63;
   color: var(--accent-fg);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
-.brand-mark .ico { width: 20px; height: 20px; }
 .brand h1 {
   margin: 0;
   font-size: 17px;
@@ -273,7 +276,9 @@ main { max-width: 920px; margin: 0 auto; padding: 22px 16px calc(var(--nav-h) + 
 .sheet-title h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .sheet-title p { margin: 4px 0 0; color: color-mix(in oklab, var(--accent-fg) 68%, transparent); font-size: 11px; }
 .sheet-title .text-btn { color: var(--accent-fg); white-space: nowrap; }
-.cc-sheet .sheet-title { background: #2a2a27; }
+.cc-sheet .sheet-title { background: var(--cc); }
+.cc-sheet .sheet-title p { color: color-mix(in oklab, var(--cc-fg) 72%, transparent); }
+.cc-sheet .sheet-title .text-btn { color: var(--cc-fg); }
 .step3-sheet { min-height: 220px; }
 .table-scroll { overflow-x: auto; overscroll-behavior-inline: contain; }
 .data-table {
@@ -305,8 +310,13 @@ main { max-width: 920px; margin: 0 auto; padding: 22px 16px calc(var(--nav-h) + 
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.cc-sheet .data-table th { background: #eceae4; }
-.step3-sheet .data-table th { background: #eceae4; }
+.cc-sheet .data-table th {
+  color: var(--cc-fg);
+  background: var(--cc);
+  border-right-color: color-mix(in oklab, white 18%, var(--cc));
+}
+.cc-sheet .data-table tbody tr:nth-child(even) td { background: var(--cc-soft); }
+.step3-sheet .data-table th { background: var(--bg-subtle); }
 .data-table td.wrap { min-width: 220px; white-space: normal; line-height: 1.4; }
 .data-table tbody tr:nth-child(even) td { background: #f7f6f2; }
 .data-table tr:last-child td { border-bottom: 0; }
@@ -332,14 +342,6 @@ main { max-width: 920px; margin: 0 auto; padding: 22px 16px calc(var(--nav-h) + 
 .status-highlight strong { color: var(--ok); font-size: 18px; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .status-highlight.active-cc { background: var(--info-soft); }
 .status-highlight.active-cc strong { color: var(--info); }
-.status-breakdown { margin-top: 14px; }
-.status-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 10px; align-items: center; margin: 12px 0; }
-.status-label { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: var(--fg-muted); font-size: 12px; }
-.bar-track { height: 6px; overflow: hidden; border-radius: 99px; background: var(--bg-subtle); }
-.bar-fill { height: 100%; min-width: 4px; border-radius: inherit; background: var(--fg); }
-.status-count { color: var(--fg); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.status-row.is-cancel .bar-fill { background: var(--danger); }
-.status-row.is-cancel .status-count { color: var(--danger); }
 
 .privacy-note {
   display: flex;
@@ -656,6 +658,51 @@ select:focus, input:focus, textarea:focus {
   background: color-mix(in oklab, var(--bg) 94%, transparent);
   backdrop-filter: blur(8px);
 }
+.password-sheet { width: min(460px, 100%); }
+.password-sheet .form-actions { grid-template-columns: 1fr 1fr; }
+.password-status {
+  margin: -4px 0 10px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.password-status.set { color: var(--ok); }
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+#passwordModal [hidden] { display: none !important; }
+
+.lock-screen {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #0b2545;
+}
+.lock-screen[hidden] { display: none !important; }
+.lock-card {
+  width: min(400px, 100%);
+  padding: 28px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow-border-hover);
+}
+.lock-card > strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.lock-card h2 { margin: 0; font-size: 22px; letter-spacing: var(--tracking-tight); }
+.lock-card p { margin: 8px 0 18px; color: var(--fg-muted); font-size: 13px; }
+.lock-card .primary { width: 100%; margin-top: 8px; }
+body.is-locked { overflow: hidden; }
 
 .toast {
   position: fixed;

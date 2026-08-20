@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "PipeDesk",
-  "short_name": "PipeDesk",
-  "description": "Quản lý pipeline khách hàng ngay trên thiết bị",
+  "name": "CRM D7",
+  "short_name": "CRM D7",
+  "description": "Quản lý pipeline khách hàng — CRM D7",
   "lang": "vi",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f3f2ee",
+  "background_color": "#0b2545",
   "theme_color": "#0b2545",
   "categories": ["business", "productivity"],
   "icons": [

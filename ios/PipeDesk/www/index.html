@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0b2545">
-  <meta name="description" content="Quản lý pipeline khách hàng ngay trên thiết bị">
+  <meta name="description" content="CRM D7 — quản lý pipeline khách hàng ngay trên thiết bị">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="PipeDesk">
-  <title>PipeDesk</title>
+  <meta name="apple-mobile-web-app-title" content="CRM D7">
+  <title>CRM D7</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -52,9 +52,9 @@
 
   <header class="app-header">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true"><svg class="ico"><use href="#i-mark"/></svg></div>
+      <div class="brand-mark" aria-hidden="true">D7</div>
       <div>
-        <h1>PipeDesk</h1>
+        <h1>CRM D7</h1>
         <p>Pipeline khách hàng</p>
       </div>
     </div>
@@ -138,9 +138,6 @@
             <span>CC đã Active</span>
             <strong id="activeCcCount">0 thẻ</strong>
           </article>
-        </div>
-        <div id="statusBreakdown" class="status-breakdown empty-state compact-empty">
-          Chưa có dữ liệu để thống kê.
         </div>
       </div>
 
@@ -241,6 +238,7 @@
           <input id="importJsonInput" type="file" accept="application/json,.json">
         </label>
         <button id="passwordBtn" class="secondary wide">Thiết lập / đổi mật khẩu bảo vệ</button>
+        <p id="passwordStatus" class="password-status">Chưa đặt mật khẩu bảo vệ</p>
       </div>
       <div class="panel sync-panel">
         <div class="sync-heading">
@@ -272,7 +270,7 @@
         <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
       </div>
       <div class="about">
-        <strong>PipeDesk v1.6.2</strong>
+        <strong>CRM D7 v1.6.6</strong>
         <span>Phát triển bởi Thân Sang</span>
       </div>
     </section>
@@ -454,6 +452,56 @@
         </div>
       </form>
     </section>
+  </div>
+
+  <div id="passwordModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-password></div>
+    <section class="modal-sheet password-sheet" role="dialog" aria-modal="true" aria-labelledby="passwordTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="passwordTitle">Mật khẩu bảo vệ</h2>
+          <p id="passwordHint">Dùng khi xuất Excel hoặc xóa toàn bộ dữ liệu.</p>
+        </div>
+        <button class="icon-btn" type="button" data-close-password aria-label="Đóng">
+          <svg class="ico"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <form id="passwordForm">
+        <label class="field" id="currentPasswordField">
+          <span>Mật khẩu hiện tại</span>
+          <input id="currentPassword" type="password" autocomplete="current-password">
+        </label>
+        <label class="field" id="newPasswordField">
+          <span>Mật khẩu mới</span>
+          <input id="newPassword" type="password" autocomplete="new-password">
+        </label>
+        <label class="field" id="confirmPasswordField">
+          <span>Nhập lại mật khẩu mới</span>
+          <input id="confirmPassword" type="password" autocomplete="new-password">
+        </label>
+        <p id="passwordError" class="field-error" hidden></p>
+        <div class="form-actions">
+          <button class="secondary" type="button" data-close-password>Hủy</button>
+          <button id="passwordSubmitBtn" class="primary" type="submit">Lưu mật khẩu</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="lockScreen" class="lock-screen" hidden>
+    <div class="lock-card">
+      <strong>CRM D7</strong>
+      <h2>Dữ liệu đã mã hóa</h2>
+      <p>Nhập mật khẩu bảo vệ để mở CCCD, SĐT và hồ sơ khách hàng.</p>
+      <form id="unlockForm">
+        <label class="field">
+          <span>Mật khẩu</span>
+          <input id="unlockPassword" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="unlockError" class="field-error" hidden></p>
+        <button class="primary wide" type="submit">Mở khóa</button>
+      </form>
+    </div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
