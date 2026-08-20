@@ -1,0 +1,138 @@
+[
+    {
+        "id": "01",
+        "name": "Hà Nội"
+    },
+    {
+        "id": "02",
+        "name": "Bắc Ninh"
+    },
+    {
+        "id": "03",
+        "name": "Quảng Ninh"
+    },
+    {
+        "id": "04",
+        "name": "Tp Hải Phòng"
+    },
+    {
+        "id": "05",
+        "name": "Hưng Yên"
+    },
+    {
+        "id": "06",
+        "name": "Ninh Bình"
+    },
+    {
+        "id": "07",
+        "name": "Cao Bằng"
+    },
+    {
+        "id": "08",
+        "name": "Tuyên Quang"
+    },
+    {
+        "id": "09",
+        "name": "Lào Cai"
+    },
+    {
+        "id": "10",
+        "name": "Thái Nguyên"
+    },
+    {
+        "id": "11",
+        "name": "Lạng Sơn"
+    },
+    {
+        "id": "12",
+        "name": "Phú Thọ"
+    },
+    {
+        "id": "13",
+        "name": "Điện Biên"
+    },
+    {
+        "id": "14",
+        "name": "Lai Châu"
+    },
+    {
+        "id": "15",
+        "name": "Sơn La"
+    },
+    {
+        "id": "16",
+        "name": "Thanh Hóa"
+    },
+    {
+        "id": "17",
+        "name": "Nghệ An"
+    },
+    {
+        "id": "18",
+        "name": "Hà Tĩnh"
+    },
+    {
+        "id": "19",
+        "name": "Quảng Trị"
+    },
+    {
+        "id": "20",
+        "name": "Huế"
+    },
+    {
+        "id": "21",
+        "name": "Tp Đà Nẵng"
+    },
+    {
+        "id": "22",
+        "name": "Quảng Ngãi"
+    },
+    {
+        "id": "23",
+        "name": "Khánh Hòa"
+    },
+    {
+        "id": "24",
+        "name": "Gia Lai"
+    },
+    {
+        "id": "25",
+        "name": "Đắk Lắk"
+    },
+    {
+        "id": "26",
+        "name": "Lâm Đồng"
+    },
+    {
+        "id": "27",
+        "name": "Tây Ninh"
+    },
+    {
+        "id": "28",
+        "name": "Đồng Nai"
+    },
+    {
+        "id": "29",
+        "name": "Tp Hồ Chí Minh"
+    },
+    {
+        "id": "30",
+        "name": "Vĩnh Long"
+    },
+    {
+        "id": "31",
+        "name": "Đồng Tháp"
+    },
+    {
+        "id": "32",
+        "name": "An Giang"
+    },
+    {
+        "id": "33",
+        "name": "Tp Cần Thơ"
+    },
+    {
+        "id": "34",
+        "name": "Cà Mau"
+    }
+]

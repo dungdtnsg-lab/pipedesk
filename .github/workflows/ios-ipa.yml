@@ -1,0 +1,74 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync PWA into iOS bundle
+        run: python3 ios/sync-www.py
+
+      - name: Build unsigned iOS app
+        run: |
+          xcodebuild \
+            -project ios/PipeDesk.xcodeproj \
+            -scheme PipeDesk \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ios/DerivedData \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package IPA
+        run: |
+          set -e
+          APP=$(find ios/DerivedData/Build/Products -name 'PipeDesk.app' | head -n 1)
+          echo "APP=$APP"
+          test -d "$APP"
+          rm -rf Payload PipeDesk.ipa
+          mkdir Payload
+          cp -R "$APP" Payload/PipeDesk.app
+          rm -rf Payload/PipeDesk.app/_CodeSignature
+          python3 - <<'PY'
+          import zipfile, os
+          with zipfile.ZipFile("PipeDesk.ipa", "w", zipfile.ZIP_DEFLATED) as z:
+              for root, dirs, files in os.walk("Payload"):
+                  for name in files:
+                      path = os.path.join(root, name)
+                      z.write(path, path)
+          print("ipa", os.path.getsize("PipeDesk.ipa"))
+          PY
+          ls -lh PipeDesk.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PipeDesk
+          path: PipeDesk.ipa
+
+      - name: Attach IPA to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.6.1-ios
+          name: PipeDesk v1.6.1 IPA
+          files: PipeDesk.ipa
+          body: |
+            IPA unsigned (arm64). Cài bằng Sideloadly / AltStore / SideStore với Apple ID của bạn.
+
+            1. Tải `PipeDesk.ipa`
+            2. Mở Sideloadly (Windows/Mac), kéo file IPA vào, đăng nhập Apple ID
+            3. Cắm iPhone, bấm Start
+            4. Trên iPhone: Cài đặt → General → VPN & Device Management → trust developer

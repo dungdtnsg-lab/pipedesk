@@ -1,24 +1,32 @@
 # PipeDesk
 
-PWA quản lý pipeline khách hàng (UPL, thẻ CC, SCL, Bước 3). Chạy offline trên máy, có Zalo / Email / Maps, xuất JSON–Excel và đồng bộ Google Sheet.
+PWA quản lý pipeline khách hàng (UPL, thẻ CC, SCL, Bước 3).
 
 **Phiên bản:** 1.6.1
 
-## Cài trên iPhone (thay cho IPA)
+## Tải IPA (iPhone)
 
-App Store IPA cần tài khoản Apple Developer và máy Mac để ký. PipeDesk là PWA: mở bằng Safari rồi ghim ra màn hình chính.
+File IPA unsigned, build trên GitHub Actions (macOS / Xcode):
 
-Bật GitHub Pages một lần: repo **Settings → Pages → Source = GitHub Actions**, rồi workflow tự deploy.
+**[Releases → PipeDesk v1.6.1 IPA](https://github.com/dungdtnsg-lab/pipedesk/releases/tag/v1.6.1-ios)**
 
-1. Mở [https://dungdtnsg-lab.github.io/pipedesk/](https://dungdtnsg-lab.github.io/pipedesk/) bằng **Safari** trên iPhone.
-2. Bấm nút **Chia sẻ** → **Thêm vào Màn hình chính**.
-3. Icon PipeDesk hiện như app, dùng offline.
+Cài bằng **Sideloadly** (Windows/Mac) hoặc **AltStore / SideStore**:
 
-Android/Chrome: mở cùng link → **Cài ứng dụng** / **Thêm vào màn hình chính**.
+1. Tải `PipeDesk.ipa`
+2. Mở Sideloadly → kéo IPA vào → đăng nhập Apple ID miễn phí
+3. Cắm iPhone USB → Start
+4. iPhone: **Cài đặt → General → VPN & Device Management** → Trust
 
-## Dùng local
+Không cài trực tiếp từ Files được — iOS bắt buộc ký bằng Apple ID. IPA này **chưa ký** (không có tài khoản Apple Developer trên máy build).
 
-Cần máy chủ HTTPS hoặc `localhost` (service worker không chạy với `file://`).
+Bundle ID: `app.thansang.pipedesk`
+
+## Source
+
+- PWA (web): `index.html`, `main.js`, `style.css`
+- iOS wrapper (WKWebView): `ios/`
+
+## Dùng local (web)
 
 ```bash
 python3 -m http.server 8080
@@ -26,21 +34,4 @@ python3 -m http.server 8080
 
 Mở `http://127.0.0.1:8080`.
 
-## Tính năng
-
-- Tổng quan theo tuần / tháng
-- Hồ sơ UPL, Thẻ CC, SCL, Bước 3
-- Kinh doanh: tên công ty, địa chỉ, doanh thu
-- Bảo hiểm BHSK / BHKV + số tiền
-- Gọi điện, Zalo, Email, Google Maps
-- Địa chỉ hành chính VN 2025 (offline)
-- Sao lưu JSON / Excel (Excel có mật khẩu)
-- Đồng bộ Google Sheet (Apps Script)
-
-Dữ liệu khách chỉ lưu trên thiết bị (`localStorage`), không gửi lên GitHub.
-
-## Mặc định hồ sơ mới
-
-- Cán bộ bán: Thân Trọng Sang
-- Đơn vị: HH - D7 1
-- Chức danh: RO
+Dữ liệu khách chỉ lưu trên thiết bị, không gửi lên GitHub.
