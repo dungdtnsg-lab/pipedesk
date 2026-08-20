@@ -8,6 +8,8 @@ PWA quản lý pipeline khách hàng (UPL, thẻ CC, SCL, Bước 3). Chạy off
 
 App Store IPA cần tài khoản Apple Developer và máy Mac để ký. PipeDesk là PWA: mở bằng Safari rồi ghim ra màn hình chính.
 
+Bật GitHub Pages một lần: repo **Settings → Pages → Source = GitHub Actions**, rồi workflow tự deploy.
+
 1. Mở [https://dungdtnsg-lab.github.io/pipedesk/](https://dungdtnsg-lab.github.io/pipedesk/) bằng **Safari** trên iPhone.
 2. Bấm nút **Chia sẻ** → **Thêm vào Màn hình chính**.
 3. Icon PipeDesk hiện như app, dùng offline.
