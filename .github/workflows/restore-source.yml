@@ -2,9 +2,6 @@ name: Restore source files
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/restore-source.yml'
 
 permissions:
   contents: write
@@ -14,28 +11,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download and restore source files
+      - name: Decode and restore files
         run: |
           set -e
-          curl -fsSL -o index.html "https://litter.catbox.moe/c43q0b.html"
-          curl -fsSL -o main.js "https://litter.catbox.moe/tlqthg.js"
-          curl -fsSL -o style.css "https://litter.catbox.moe/iewgp9.css"
-          curl -fsSL -o sw.js "https://litter.catbox.moe/omp212.js"
-          curl -fsSL -o ios/PipeDesk/Info.plist "https://litter.catbox.moe/2avowd.plist"
-          wc -c index.html main.js style.css sw.js
-          grep -q 'scanCccdQrBtn' index.html
-          grep -q 'parseCccdQrText' main.js
-          mkdir -p ios/PipeDesk/www
-          cp index.html main.js style.css sw.js ios/PipeDesk/www/
-          # Keep other www assets
-          cp -n demo-seed.js ios/PipeDesk/www/ 2>/dev/null || true
-          cp -n manifest.webmanifest ios/PipeDesk/www/ 2>/dev/null || true
-          cp -rn data icons ios/PipeDesk/www/ 2>/dev/null || true
+          python3 <<'PY'
+          import base64, pathlib, shutil
+          restore = pathlib.Path("_restore")
+          mapping = {
+            "index.html.b64": "index.html",
+            "style.css.b64": "style.css",
+            "sw.js.b64": "sw.js",
+            "ios__PipeDesk__Info.plist.b64": "ios/PipeDesk/Info.plist",
+          }
+          for src, dest in mapping.items():
+            p = restore / src
+            data = base64.b64decode("".join(p.read_text().split()))
+            pathlib.Path(dest).parent.mkdir(parents=True, exist_ok=True)
+            pathlib.Path(dest).write_bytes(data)
+            print("restored", dest, len(data))
+          parts = sorted(restore.glob("main.js.b64.part*"))
+          if parts:
+            b64 = "".join("".join(p.read_text().split()) for p in parts)
+            data = base64.b64decode(b64)
+          else:
+            data = base64.b64decode("".join((restore / "main.js.b64").read_text().split()))
+          pathlib.Path("main.js").write_bytes(data)
+          print("restored main.js", len(data))
+          www = pathlib.Path("ios/PipeDesk/www")
+          www.mkdir(parents=True, exist_ok=True)
+          for name in ["index.html", "main.js", "style.css", "sw.js"]:
+              shutil.copy(name, www / name)
+              print("www", name)
+          PY
       - name: Commit restored files
         run: |
           git config user.name "CRM D7 Bot"
           git config user.email "bot@crmd7.local"
           git add index.html main.js style.css sw.js ios/PipeDesk/Info.plist ios/PipeDesk/www/
           git status
+          git diff --cached --stat
           git commit -m "CRM D7 v1.6.8 — restore full source + QR CCCD scan" || echo "no changes"
           git push origin HEAD:main
