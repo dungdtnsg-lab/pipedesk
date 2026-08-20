@@ -23,7 +23,10 @@ final class CccdNfcReader: NSObject, NFCTagReaderSessionDelegate {
             complete(ok: false, error: "Máy này không hỗ trợ NFC.")
             return
         }
-        let session = NFCTagReaderSession(pollingOption: [.iso14443], delegate: self, queue: nil)
+        guard let session = NFCTagReaderSession(pollingOption: [.iso14443], delegate: self, queue: nil) else {
+            complete(ok: false, error: "Không mở được phiên NFC. Cần IPA cài bằng tài khoản Developer.")
+            return
+        }
         session.alertMessage = "Chạm mép trên iPhone vào thẻ CCCD và giữ yên"
         self.session = session
         session.begin()
