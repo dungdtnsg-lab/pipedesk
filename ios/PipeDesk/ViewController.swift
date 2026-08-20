@@ -1,6 +1,7 @@
 import UIKit
 import WebKit
 import LocalAuthentication
+import AVFoundation
 
 final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler {
     private var webView: WKWebView!
@@ -21,6 +22,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         config.websiteDataStore = .default()
         config.userContentController.add(self, name: "saveFile")
         config.userContentController.add(self, name: "biometric")
+        config.userContentController.add(self, name: "scanCccdQr")
 
         let webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -124,6 +126,10 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "scanCccdQr" {
+            presentCccdQrScanner()
+            return
+        }
         if message.name == "biometric" {
             let reason: String
             if let body = message.body as? [String: Any] {
@@ -179,6 +185,22 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         webView?.evaluateJavaScript(js, completionHandler: nil)
     }
 
+    private func presentCccdQrScanner() {
+        let scanner = CccdQrScannerViewController { [weak self] rawValue in
+            guard let self else { return }
+            guard let rawValue else {
+                self.webView?.evaluateJavaScript("window.__pipedeskCccdQrCancelled && window.__pipedeskCccdQrCancelled()", completionHandler: nil)
+                return
+            }
+            guard let data = try? JSONEncoder().encode(rawValue),
+                  let jsonValue = String(data: data, encoding: .utf8) else { return }
+            let js = "window.__pipedeskCccdQrResult && window.__pipedeskCccdQrResult(\(jsonValue))"
+            self.webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
+        scanner.modalPresentationStyle = .fullScreen
+        present(scanner, animated: true)
+    }
+
     private func shareFile(_ url: URL) {
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         sheet.popoverPresentationController?.sourceView = view
@@ -225,6 +247,140 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
             completionHandler(alert.textFields?.first?.text)
         })
+        present(alert, animated: true)
+    }
+}
+
+
+private final class CccdQrScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    private let captureSession = AVCaptureSession()
+    private let onFinish: (String?) -> Void
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var hasFinished = false
+
+    init(onFinish: @escaping (String?) -> Void) {
+        self.onFinish = onFinish
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        configureHeader()
+        requestCameraAndStart()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.bounds
+    }
+
+    private func configureHeader() {
+        let title = UILabel()
+        title.translatesAutoresizingMaskIntoConstraints = false
+        title.text = "Quét QR CCCD"
+        title.textColor = .white
+        title.font = .systemFont(ofSize: 20, weight: .semibold)
+
+        let hint = UILabel()
+        hint.translatesAutoresizingMaskIntoConstraints = false
+        hint.text = "Đưa mã QR mặt trước thẻ vào khung hình"
+        hint.textColor = .white
+        hint.font = .systemFont(ofSize: 15)
+        hint.textAlignment = .center
+        hint.numberOfLines = 0
+
+        let close = UIButton(type: .system)
+        close.translatesAutoresizingMaskIntoConstraints = false
+        close.setTitle("Hủy", for: .normal)
+        close.tintColor = .white
+        close.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+        close.addTarget(self, action: #selector(cancel), for: .touchUpInside)
+
+        view.addSubview(title)
+        view.addSubview(hint)
+        view.addSubview(close)
+        NSLayoutConstraint.activate([
+            title.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            close.centerYAnchor.constraint(equalTo: title.centerYAnchor),
+            close.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            hint.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            hint.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            hint.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -36)
+        ])
+    }
+
+    private func requestCameraAndStart() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            configureScanner()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    granted ? self?.configureScanner() : self?.showCameraAccessError()
+                }
+            }
+        default:
+            showCameraAccessError()
+        }
+    }
+
+    private func configureScanner() {
+        guard captureSession.inputs.isEmpty,
+              let camera = AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: camera),
+              captureSession.canAddInput(input) else {
+            showCameraAccessError(message: "Không thể khởi động camera để quét QR.")
+            return
+        }
+        captureSession.addInput(input)
+
+        let output = AVCaptureMetadataOutput()
+        guard captureSession.canAddOutput(output) else {
+            showCameraAccessError(message: "Không thể đọc mã QR trên thiết bị này.")
+            return
+        }
+        captureSession.addOutput(output)
+        output.setMetadataObjectsDelegate(self, queue: .main)
+        output.metadataObjectTypes = [.qr]
+
+        let preview = AVCaptureVideoPreviewLayer(session: captureSession)
+        preview.videoGravity = .resizeAspectFill
+        preview.frame = view.bounds
+        view.layer.insertSublayer(preview, at: 0)
+        previewLayer = preview
+
+        DispatchQueue.global(qos: .userInitiated).async { [captureSession] in
+            captureSession.startRunning()
+        }
+    }
+
+    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        guard !hasFinished,
+              let object = metadataObjects.compactMap({ $0 as? AVMetadataMachineReadableCodeObject }).first,
+              let value = object.stringValue else { return }
+        finish(value)
+    }
+
+    @objc private func cancel() {
+        finish(nil)
+    }
+
+    private func finish(_ value: String?) {
+        guard !hasFinished else { return }
+        hasFinished = true
+        if captureSession.isRunning { captureSession.stopRunning() }
+        dismiss(animated: true) { [onFinish] in onFinish(value) }
+    }
+
+    private func showCameraAccessError(message: String = "Hãy cho phép quyền Camera trong Cài đặt để quét QR CCCD.") {
+        let alert = UIAlertController(title: "Không mở được camera", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Đóng", style: .cancel) { [weak self] _ in self?.finish(nil) })
         present(alert, animated: true)
     }
 }

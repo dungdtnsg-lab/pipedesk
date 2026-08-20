@@ -1305,6 +1305,14 @@
 
   let qrScanner = null;
 
+  function nativeCccdQrScannerAvailable() {
+    return Boolean(
+      window.webkit
+      && window.webkit.messageHandlers
+      && window.webkit.messageHandlers.scanCccdQr
+    );
+  }
+
   function parseCccdQrText(raw) {
     const text = String(raw || "").trim();
     if (!text) return null;
@@ -1412,6 +1420,19 @@
     showToast("Đã điền thông tin từ QR CCCD");
   }
 
+  // Called by the iOS camera scanner. Keeping QR parsing in JavaScript means
+  // the native app and the PWA always fill the exact same CCCD form fields.
+  window.__pipedeskCccdQrResult = (raw) => {
+    const data = parseCccdQrText(raw);
+    if (!data || !data.cccd) {
+      alert("QR không đúng định dạng CCCD. Vui lòng quét lại mặt trước thẻ.");
+      return;
+    }
+    applyCccdQrData(data);
+  };
+
+  window.__pipedeskCccdQrCancelled = () => {};
+
   async function stopQrScanner() {
     const hint = $("#qrScanHint");
     try {
@@ -1433,6 +1454,10 @@
   }
 
   async function openQrScanModal() {
+    if (nativeCccdQrScannerAvailable()) {
+      window.webkit.messageHandlers.scanCccdQr.postMessage({});
+      return;
+    }
     if (typeof Html5Qrcode === "undefined") {
       alert("Thư viện quét QR chưa tải được. Kiểm tra mạng rồi thử lại.");
       return;
