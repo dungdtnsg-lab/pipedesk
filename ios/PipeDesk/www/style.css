@@ -1135,7 +1135,6 @@ body.is-locked { overflow: hidden; }
   line-height: 1.45;
 }
 .scan-panel[data-scan-panel="paste"] .primary,
-.scan-panel[data-scan-panel="nfc"] .primary,
 .scan-panel[data-scan-panel="photo"] .primary { margin-top: 12px; }
 .scan-panel .field > span { color: color-mix(in oklab, #eef2f6 70%, transparent); }
 .scan-panel input[type="text"] {
@@ -1143,44 +1142,6 @@ body.is-locked { overflow: hidden; }
   background: #eef2f6;
   color: var(--fg);
 }
-.nfc-visual {
-  display: grid;
-  place-items: center;
-  gap: 10px;
-  min-height: 150px;
-  margin: 8px 0 16px;
-  color: #eef2f6;
-}
-.nfc-wave {
-  position: absolute;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  border: 2px solid color-mix(in oklab, #eef2f6 45%, transparent);
-  animation: nfcPulse 1.6s var(--ease-out) infinite;
-}
-.nfc-visual { position: relative; }
-.nfc-phone {
-  position: relative;
-  z-index: 1;
-  width: 42px;
-  height: 72px;
-  border-radius: 8px;
-  border: 2px solid #eef2f6;
-}
-.nfc-phone span {
-  display: block;
-  width: 12px;
-  height: 3px;
-  margin: 6px auto 0;
-  border-radius: 99px;
-  background: #eef2f6;
-}
-@keyframes nfcPulse {
-  0% { transform: scale(0.72); opacity: 0.9; }
-  100% { transform: scale(1.4); opacity: 0; }
-}
-.nfc-help { text-align: left; }
 .cccd-preview {
   position: absolute;
   inset: 0;
