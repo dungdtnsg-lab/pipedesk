@@ -6,7 +6,7 @@
   const SYNC_CONFIG_KEY = "pipedesk_google_sync_v1";
   const SYNC_DELETIONS_KEY = "pipedesk_sync_deletions_v1";
   const SYNC_LAST_SUCCESS_KEY = "pipedesk_sync_last_success_v1";
-  const SCHEMA_VERSION = 7;
+  const SCHEMA_VERSION = 8;
   const VAULT_ITERATIONS = 100000;
   const DEFAULT_STAFF_NAME = "Thân Trọng Sang";
   const DEFAULT_UNIT = "HH - D7 1";
@@ -167,6 +167,7 @@
       gender: ["Nam", "Nữ"].includes(record.gender) ? record.gender : "",
       nationality: String(record.nationality || "").trim() || "Việt Nam",
       idIssueDate: String(record.idIssueDate || "").trim().slice(0, 10),
+      idIssuePlace: String(record.idIssuePlace || "").trim(),
       idExpiryDate: String(record.idExpiryDate || "").trim().slice(0, 10),
       cancelledId: identifierText(record.cancelledId, 12),
       personalEmail: String(record.personalEmail || "").trim(),
@@ -897,6 +898,7 @@
     if (record.gender) $("#gender").value = record.gender;
     if (record.nationality) $("#nationality").value = record.nationality;
     $("#idIssueDate").value = record.idIssueDate || "";
+    $("#idIssuePlace").value = record.idIssuePlace || "";
     $("#idExpiryDate").value = record.idExpiryDate || "";
     $("#cancelledId").value = record.cancelledId || "";
     $("#personalEmail").value = record.personalEmail || "";
@@ -949,6 +951,7 @@
     ["gender", "Giới tính"],
     ["nationality", "Quốc tịch"],
     ["idIssueDate", "Ngày cấp CCCD"],
+    ["idIssuePlace", "Nơi cấp CCCD"],
     ["idExpiryDate", "Ngày hết hạn"],
     ["cancelledId", "Số ĐD đã hủy"],
     ["status", "Tình trạng hồ sơ"],
@@ -974,6 +977,7 @@
     "gender",
     "nationality",
     "idIssueDate",
+    "idIssuePlace",
     "idExpiryDate",
     "status",
     "statusDate",
@@ -1084,7 +1088,7 @@
           <tbody>
             ${list.map((record) => `
               <tr>
-                ${columns.map(([key]) => `<td class="${key === "fullAddress" || key === "notes" || key === "companyAddress" ? "wrap" : ""}">${tableCell(record, key)}</td>`).join("")}
+                ${columns.map(([key]) => `<td class="${key === "fullAddress" || key === "notes" || key === "companyAddress" || key === "idIssuePlace" ? "wrap" : ""}">${tableCell(record, key)}</td>`).join("")}
                 ${options.actions ? `<td><button class="edit-btn" data-edit="${escapeHtml(record.id)}">Mở hồ sơ</button></td>` : ""}
               </tr>
             `).join("")}
@@ -1117,6 +1121,7 @@
       record.phone,
       record.personalEmail,
       record.cccd,
+      record.idIssuePlace,
       record.product,
       record.status,
       record.fullAddress,
@@ -1258,6 +1263,7 @@
             <div class="detail"><span>Ngày sinh</span><strong>${escapeHtml(formatDate(record.dateOfBirth) || "—")}</strong></div>
             <div class="detail"><span>Giới tính</span><strong>${escapeHtml(record.gender || "—")}</strong></div>
             <div class="detail"><span>Ngày cấp</span><strong>${escapeHtml(formatDate(record.idIssueDate) || "—")}</strong></div>
+            <div class="detail"><span>Nơi cấp CCCD</span><strong>${escapeHtml(record.idIssuePlace || "—")}</strong></div>
             <div class="detail address-detail"><span>Địa chỉ</span><strong>${escapeHtml(record.fullAddress || "—")}</strong></div>
             <div class="detail"><span>Công ty</span><strong>${escapeHtml(record.companyName || "—")}</strong></div>
             <div class="detail"><span>Doanh thu</span><strong>${escapeHtml(Number(record.companyRevenue) > 0 ? `${formatNumber(record.companyRevenue)} triệu` : "—")}</strong></div>
@@ -1388,6 +1394,7 @@
       nationality: "Việt Nam",
       fullAddress: "",
       idIssueDate: "",
+      idIssuePlace: "",
       idExpiryDate: normalizeQrDate(expiryRaw),
       cancelledId: ""
     };
@@ -1432,6 +1439,7 @@
         nationality: "Việt Nam",
         fullAddress: address,
         idIssueDate: extraDates[0] || "",
+        idIssuePlace: "",
         idExpiryDate: extraDates[1] || "",
         cancelledId: ""
       };
@@ -1448,6 +1456,7 @@
         nationality: "Việt Nam",
         fullAddress: "",
         idIssueDate: "",
+        idIssuePlace: "",
         idExpiryDate: "",
         cancelledId: ""
       };
@@ -1491,6 +1500,19 @@
     const nationality = cccdFieldAfterLabel(lines, ["Quốc tịch", "Nationality"]) || "Việt Nam";
     const address = cccdFieldAfterLabel(lines, ["Nơi thường trú", "Nơi cư trú", "Nơi ở hiện tại", "Địa chỉ", "Place of residence", "Address"]);
     const issueRaw = cccdFieldAfterLabel(lines, ["Ngày cấp", "Date of issue", "Issue date"]);
+    const issuePlace = cccdFieldAfterLabel(lines, [
+      "Nơi cấp CCCD",
+      "Nơi cấp thẻ",
+      "Nơi cấp",
+      "Cơ quan cấp CCCD",
+      "Cơ quan cấp",
+      "Issuing authority",
+      "Issuing agency",
+      "Place of issuance",
+      "Place of issue",
+      "Issue place",
+      "Issuer"
+    ]);
     const expiryRaw = cccdFieldAfterLabel(lines, ["Có giá trị đến", "Ngày hết hạn", "Date of expiry", "Expiry date"]);
     const dateLines = lines.flatMap((line) => line.match(/(?:\d{1,2}[\/\-.]){2}\d{2,4}|\d{6}|\d{8}/g) || []);
     const dateValues = dateLines.map(normalizeQrDate).filter(Boolean);
@@ -1503,6 +1525,7 @@
       nationality,
       fullAddress: address,
       idIssueDate: normalizeQrDate(issueRaw) || dateValues[1] || "",
+      idIssuePlace: issuePlace,
       idExpiryDate: normalizeQrDate(expiryRaw) || dateValues[2] || "",
       cancelledId: ""
     };
@@ -1515,7 +1538,9 @@
       data.customerName,
       data.dateOfBirth,
       data.gender,
-      data.fullAddress
+      data.fullAddress,
+      data.idIssueDate,
+      data.idIssuePlace
     ].some((value) => String(value || "").trim()));
   }
 
@@ -1532,6 +1557,7 @@
       nationality: String(data.nationality || "").trim(),
       fullAddress: String(data.fullAddress || "").trim(),
       idIssueDate: normalizeQrDate(data.idIssueDate),
+      idIssuePlace: String(data.idIssuePlace || "").trim(),
       idExpiryDate: normalizeQrDate(data.idExpiryDate),
       cancelledId: String(data.cancelledId || "").replace(/\D/g, "").slice(0, 12)
     };
@@ -1546,6 +1572,7 @@
     if (data.gender) $("#gender").value = data.gender;
     if (data.nationality) $("#nationality").value = data.nationality;
     if (data.idIssueDate) $("#idIssueDate").value = data.idIssueDate;
+    if (data.idIssuePlace) $("#idIssuePlace").value = data.idIssuePlace;
     if (data.idExpiryDate) $("#idExpiryDate").value = data.idExpiryDate;
     if (data.cancelledId) $("#cancelledId").value = data.cancelledId;
     if (data.fullAddress) {
@@ -1631,6 +1658,7 @@
       ["Ngày sinh", formatIsoDateVi(data.dateOfBirth) || "—"],
       ["Giới tính", data.gender || "—"],
       ["Ngày cấp", formatIsoDateVi(data.idIssueDate) || "—"],
+      ["Nơi cấp CCCD", data.idIssuePlace || "—"],
       ["Hết hạn", formatIsoDateVi(data.idExpiryDate) || "—"],
       ["Địa chỉ", data.fullAddress || "—"]
     ];
@@ -2012,6 +2040,7 @@
       nationality: String(values?.Nationality || values?.nationality || "Việt Nam").trim(),
       fullAddress: String(values?.Place_of_residence || values?.place_of_residence || values?.fullAddress || "").trim(),
       idIssueDate: normalizeQrDate(values?.Date_of_issue || values?.date_of_issue || values?.idIssueDate),
+      idIssuePlace: String(values?.Place_of_issue || values?.place_of_issue || values?.Place_of_issuance || values?.place_of_issuance || values?.Issuing_authority || values?.issuing_authority || values?.Issue_place || values?.issuePlace || values?.idIssuePlace || "").trim(),
       idExpiryDate: normalizeQrDate(values?.Date_of_expiry || values?.date_of_expiry || values?.idExpiryDate),
       cmndOld: "",
       cancelledId: ""
@@ -2044,6 +2073,7 @@
     $("#gender").value = record?.gender || "";
     $("#nationality").value = record?.nationality || "Việt Nam";
     $("#idIssueDate").value = record?.idIssueDate || "";
+    $("#idIssuePlace").value = record?.idIssuePlace || "";
     $("#idExpiryDate").value = record?.idExpiryDate || "";
     $("#cancelledId").value = record?.cancelledId || "";
     $("#personalEmail").value = record?.personalEmail || "";
@@ -2104,6 +2134,7 @@
       gender: $("#gender").value,
       nationality: $("#nationality").value.trim() || "Việt Nam",
       idIssueDate: $("#idIssueDate").value,
+      idIssuePlace: $("#idIssuePlace").value.trim(),
       idExpiryDate: $("#idExpiryDate").value,
       cancelledId: identifierText($("#cancelledId").value, 12),
       personalEmail: $("#personalEmail").value.trim(),
@@ -2916,7 +2947,7 @@
       const file = event.dataTransfer?.files?.[0];
       if (file) ingestQrFile(file);
     });
-    ["customerName", "cccd", "dateOfBirth", "gender"].forEach((id) => {
+    ["customerName", "cccd", "dateOfBirth", "gender", "idIssueDate", "idIssuePlace"].forEach((id) => {
       $(`#${id}`)?.addEventListener("input", updateCccdCard);
       $(`#${id}`)?.addEventListener("change", updateCccdCard);
     });

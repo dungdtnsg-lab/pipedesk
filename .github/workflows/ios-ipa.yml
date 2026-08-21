@@ -62,16 +62,17 @@ jobs:
       - name: Attach IPA to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.7.1-ios
-          name: CRM D7 v1.7.1 IPA
+          tag_name: v1.7.2-ios
+          name: CRM D7 v1.7.2 IPA
           files: PipeDesk.ipa
           body: |
             IPA unsigned (arm64). Cài bằng Sideloadly / AltStore / SideStore với Apple ID của bạn.
 
-            v1.7.1 — quét CCCD Việt Nam và đọc ảnh OCR:
+            v1.7.2 — quét CCCD Việt Nam và đọc ảnh OCR:
             - Thẻ căn cước trong form + màn quét full-screen
             - QR native (khung ID-1, zoom 2.2×, đèn pin)
             - Đọc ảnh CCCD từ thư viện (QR trước, OCR trên máy hoặc API tùy chọn)
+            - Tự điền ngày sinh, ngày cấp và nơi cấp CCCD khi OCR nhận diện được
             - Dán mã QR
             - Xem trước rồi mới điền hồ sơ
 
