@@ -1394,7 +1394,7 @@
   }
 
   function parseCccdQrText(raw) {
-    let text = String(raw || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().replace(/^\uFEFF/, "");
+    let text = String(raw || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001C\u001E-\u001F]/g, "").trim().replace(/^\uFEFF/, "");
     if (!text) return null;
     try {
       if (/%[0-9a-f]{2}/i.test(text)) text = decodeURIComponent(text);
@@ -1415,7 +1415,7 @@
       if (maybeOld.length >= 8 && maybeOld.length <= 12 && !normalizeQrDate(parts[idx])) {
         cmndOld = maybeOld.slice(0, 9);
         idx += 1;
-      } else if (!parts[idx]) {
+      } else if (!parts[idx] || /^(?:số\s+)?cmnd\s+cũ$/i.test(parts[idx])) {
         idx += 1;
       }
       const fullName = parts[idx] || "";
