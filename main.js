@@ -1320,7 +1320,7 @@
   }
 
   function normalizeQrDate(value) {
-    const s = String(value || "").trim();
+    const s = String(value || "").trim().replace(/[\s.]/g, (match) => match === "." ? "/" : "");
     if (!s) return "";
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
@@ -1394,54 +1394,50 @@
   }
 
   function parseCccdQrText(raw) {
-    let text = String(raw || "").trim().replace(/^\uFEFF/, "");
+    let text = String(raw || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001C\u001E-\u001F]/g, "").trim().replace(/^\uFEFF/, "");
     if (!text) return null;
+    try {
+      if (/%[0-9a-f]{2}/i.test(text)) text = decodeURIComponent(text);
+    } catch (_) { /* payload was not URI encoded */ }
     const mrz = parseMrzTd1(text);
     if (mrz && mrz.cccd) return mrz;
 
     text = text.replace(/\r\n/g, "\n");
-    let parts = text.split("|").map((p) => p.trim());
-    if (parts.length < 3) parts = text.split("$").map((p) => p.trim());
-    if (parts.length < 3) parts = text.split("\t").map((p) => p.trim());
+    const parts = text.split(/[|$\t\u001d]+/).map((p) => p.trim());
 
-    if (parts.length >= 3) {
-      const digits0 = parts[0].replace(/\D/g, "");
-      if (digits0.length >= 9 && digits0.length <= 12) {
-        const cccd = digits0.slice(0, 12);
-        let idx = 1;
-        let cmndOld = "";
-        const maybeOld = parts[1].replace(/\D/g, "");
-        if (maybeOld.length >= 8 && maybeOld.length <= 12) {
-          cmndOld = maybeOld.slice(0, 9);
-          idx = 2;
-        } else if (!parts[1]) {
-          idx = 2;
-        }
-        const fullName = parts[idx] || "";
-        const dobRaw = parts[idx + 1] || "";
-        const genderRaw = parts[idx + 2] || "";
-        const address = parts[idx + 3] || "";
-        const extra = parts[idx + 4] || "";
-        const extra2 = parts[idx + 5] || "";
-        const extra3 = parts[idx + 6] || "";
-        const issueCandidate = [extra, extra2, extra3].find((v) => normalizeQrDate(v));
-        const expiryCandidate = [extra, extra2, extra3].filter((v) => v !== issueCandidate).find((v) => normalizeQrDate(v));
-        return {
-          cccd,
-          cmndOld: cmndOld.length >= 8 ? cmndOld : "",
-          customerName: fullName,
-          dateOfBirth: normalizeQrDate(dobRaw),
-          gender: normalizeQrGender(genderRaw),
-          nationality: "Việt Nam",
-          fullAddress: address,
-          idIssueDate: normalizeQrDate(issueCandidate || extra),
-          idExpiryDate: normalizeQrDate(expiryCandidate || extra2),
-          cancelledId: ""
-        };
+    const idIndex = parts.findIndex((part) => /(?:^|\D)\d{12}(?:\D|$)/.test(part));
+    if (idIndex >= 0) {
+      const cccdMatch = parts[idIndex].match(/\d{12}/);
+      const cccd = cccdMatch?.[0] || "";
+      let idx = idIndex + 1;
+      let cmndOld = "";
+      const maybeOld = (parts[idx] || "").replace(/\D/g, "");
+      if (maybeOld.length >= 8 && maybeOld.length <= 12 && !normalizeQrDate(parts[idx])) {
+        cmndOld = maybeOld.slice(0, 9);
+        idx += 1;
+      } else if (!parts[idx] || /^(?:số\s+)?cmnd\s+cũ$/i.test(parts[idx])) {
+        idx += 1;
       }
+      const fullName = parts[idx] || "";
+      const dobRaw = parts[idx + 1] || "";
+      const genderRaw = parts[idx + 2] || "";
+      const address = parts[idx + 3] || "";
+      const extraDates = parts.slice(idx + 4).map(normalizeQrDate).filter(Boolean);
+      return {
+        cccd,
+        cmndOld: cmndOld.length >= 8 ? cmndOld : "",
+        customerName: fullName,
+        dateOfBirth: normalizeQrDate(dobRaw),
+        gender: normalizeQrGender(genderRaw),
+        nationality: "Việt Nam",
+        fullAddress: address,
+        idIssueDate: extraDates[0] || "",
+        idExpiryDate: extraDates[1] || "",
+        cancelledId: ""
+      };
     }
 
-    const idMatch = text.match(/\b(\d{12})\b/);
+    const idMatch = text.match(/(?:^|\D)(\d{12})(?:\D|$)/);
     if (idMatch) {
       return {
         cccd: idMatch[1],
@@ -1457,6 +1453,88 @@
       };
     }
     return null;
+  }
+
+  function cccdFieldAfterLabel(lines, labels) {
+    const normalizedLabels = labels.map((label) => normalizeSearch(label));
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index].trim();
+      const normalized = normalizeSearch(line);
+      const label = normalizedLabels.find((item) => normalized.startsWith(item));
+      if (!label) continue;
+      const colon = line.search(/[:：]/);
+      if (colon >= 0 && line.slice(colon + 1).trim()) return line.slice(colon + 1).trim();
+      const remainder = line.slice(Math.min(line.length, label.length)).replace(/^\s*[-–—:]?\s*/, "").trim();
+      if (remainder && normalizeSearch(remainder) !== normalized) return remainder;
+      const next = lines[index + 1]?.trim();
+      if (next) return next;
+    }
+    return "";
+  }
+
+  function parseCccdImageText(raw) {
+    const text = String(raw || "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+      .replace(/^\uFEFF/, "")
+      .trim();
+    if (!text) return null;
+    const lines = text.split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+    const digitRuns = text.match(/\d[\d\s.-]{10,24}/g) || [];
+    const idCandidates = [...digitRuns, ...(text.match(/\d{12}/g) || [])]
+      .map((value) => value.replace(/\D/g, ""))
+      .filter((value) => value.length === 12);
+    const cccd = idCandidates[0] || "";
+    const oldRaw = cccdFieldAfterLabel(lines, ["Số CMND cũ", "CMND cũ", "Old ID"]);
+    const name = cccdFieldAfterLabel(lines, ["Họ và tên", "Họ tên", "Full name", "Name"]);
+    const dobRaw = cccdFieldAfterLabel(lines, ["Ngày sinh", "Date of birth", "DOB"]);
+    const genderRaw = cccdFieldAfterLabel(lines, ["Giới tính", "Gender", "Sex"]);
+    const nationality = cccdFieldAfterLabel(lines, ["Quốc tịch", "Nationality"]) || "Việt Nam";
+    const address = cccdFieldAfterLabel(lines, ["Nơi thường trú", "Nơi cư trú", "Nơi ở hiện tại", "Địa chỉ", "Place of residence", "Address"]);
+    const issueRaw = cccdFieldAfterLabel(lines, ["Ngày cấp", "Date of issue", "Issue date"]);
+    const expiryRaw = cccdFieldAfterLabel(lines, ["Có giá trị đến", "Ngày hết hạn", "Date of expiry", "Expiry date"]);
+    const dateLines = lines.flatMap((line) => line.match(/(?:\d{1,2}[\/\-.]){2}\d{2,4}|\d{6}|\d{8}/g) || []);
+    const dateValues = dateLines.map(normalizeQrDate).filter(Boolean);
+    const data = {
+      cccd,
+      cmndOld: oldRaw.replace(/\D/g, "").slice(0, 9),
+      customerName: name,
+      dateOfBirth: normalizeQrDate(dobRaw) || dateValues[0] || "",
+      gender: normalizeQrGender(genderRaw),
+      nationality,
+      fullAddress: address,
+      idIssueDate: normalizeQrDate(issueRaw) || dateValues[1] || "",
+      idExpiryDate: normalizeQrDate(expiryRaw) || dateValues[2] || "",
+      cancelledId: ""
+    };
+    return Object.values(data).some((value) => String(value || "").trim()) ? data : null;
+  }
+
+  function hasCccdData(data) {
+    return Boolean(data && [
+      data.cccd,
+      data.customerName,
+      data.dateOfBirth,
+      data.gender,
+      data.fullAddress
+    ].some((value) => String(value || "").trim()));
+  }
+
+  function normalizeCccdData(data) {
+    if (!data || typeof data !== "object") return null;
+    const digits = String(data.cccd || "").replace(/\D/g, "");
+    return {
+      ...data,
+      cccd: digits.slice(0, 12),
+      cmndOld: String(data.cmndOld || "").replace(/\D/g, "").slice(0, 9),
+      customerName: String(data.customerName || "").trim(),
+      dateOfBirth: normalizeQrDate(data.dateOfBirth),
+      gender: normalizeQrGender(data.gender),
+      nationality: String(data.nationality || "").trim(),
+      fullAddress: String(data.fullAddress || "").trim(),
+      idIssueDate: normalizeQrDate(data.idIssueDate),
+      idExpiryDate: normalizeQrDate(data.idExpiryDate),
+      cancelledId: String(data.cancelledId || "").replace(/\D/g, "").slice(0, 12)
+    };
   }
 
   function applyCccdQrData(data, sourceLabel) {
@@ -1573,7 +1651,7 @@
   async function retryCccdPreview() {
     hideCccdPreview();
     if (scanTab === "qr") await startWebQrCamera();
-    else if (scanTab === "photo") setQrHint("Chọn ảnh QR rõ, chụp cận góc dưới-phải.");
+    else if (scanTab === "photo") setQrHint("Chọn ảnh CCCD rõ, đủ sáng.");
     else if (scanTab === "paste") $("#qrPasteInput")?.focus();
   }
 
@@ -1624,9 +1702,8 @@
     });
     const titles = {
       qr: ["Quét QR CCCD", "Đưa góc QR mặt trước thẻ vào ô nhỏ"],
-      photo: ["Ảnh QR CCCD", "Chụp cận góc dưới bên phải mặt trước"],
-      paste: ["Dán mã QR", "Dán chuỗi QR khi camera không đọc được"],
-      nfc: ["Đọc chip NFC", "Chạm mép trên iPhone vào thẻ 2–3 giây"]
+      photo: ["Đọc ảnh CCCD", "Chọn ảnh trong thư viện để tự điền thông tin"],
+      paste: ["Dán mã QR", "Dán chuỗi QR khi camera không đọc được"]
     };
     const pair = titles[tab] || titles.qr;
     const heading = $("#qrScanTitle");
@@ -1680,17 +1757,38 @@
     return true;
   }
 
+  function handleDecodedCccdImageText(raw, sourceLabel) {
+    const data = parseCccdImageText(raw);
+    if (!hasCccdData(data)) {
+      setQrHint("Ảnh đã được đọc nhưng chưa nhận ra thông tin CCCD. Chọn ảnh mặt trước rõ, đủ sáng.");
+      return false;
+    }
+    const modal = $("#qrScanModal");
+    if (modal && !modal.classList.contains("open")) {
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    }
+    showCccdPreview(data, sourceLabel);
+    return true;
+  }
+
   function handleNativePayload(result, sourceLabel) {
-    if (result?.data?.cccd) {
+    const data = normalizeCccdData(result?.data);
+    if (hasCccdData(data)) {
       const modal = $("#qrScanModal");
       if (modal && !modal.classList.contains("open")) {
         modal.classList.add("open");
         modal.setAttribute("aria-hidden", "false");
       }
-      showCccdPreview(result.data, sourceLabel);
+      showCccdPreview(data, sourceLabel);
       return true;
     }
-    if (result?.raw) return handleDecodedCccd(result.raw, sourceLabel);
+    if (result?.raw) {
+      const photoSource = result?.source === "photo-ocr" || result?.source === "photo-api" || /ảnh/i.test(sourceLabel || "");
+      return photoSource
+        ? handleDecodedCccdImageText(result.raw, sourceLabel)
+        : handleDecodedCccd(result.raw, sourceLabel);
+    }
     return false;
   }
 
@@ -1818,7 +1916,7 @@
       };
       qrLoopTimer = requestAnimationFrame(tick);
     } catch {
-      setQrHint("Không mở được camera. Dùng Ảnh QR hoặc Dán mã — hai cách này đọc QR nhỏ tốt hơn.");
+      setQrHint("Không mở được camera. Dùng Đọc ảnh CCCD hoặc Dán mã.");
     }
   }
 
@@ -1846,26 +1944,19 @@
     }
     await stopWebQr();
     if (tab === "photo") {
-      setQrHint("Chụp cận góc QR mặt trước thẻ.");
+      setQrHint("Chọn ảnh CCCD rõ, đủ sáng. App sẽ đọc QR trước rồi OCR thông tin trên ảnh.");
       return;
     }
     if (tab === "paste") {
       $("#qrPasteInput")?.focus();
       return;
     }
-    if (tab === "nfc") {
-      const can = $("#cccdCan")?.value || "";
-      if (can && $("#nfcCanInput")) $("#nfcCanInput").value = can;
-      $("#nfcHint").textContent = hasNativeCccdBridge()
-        ? "Bấm bắt đầu, sau đó chạm thẻ vào cạnh trên iPhone."
-        : "Web không đọc được chip CCCD. Cần app iOS (IPA) để dùng NFC.";
-    }
   }
 
   async function pickQrPhoto() {
     if (hasNativeCccdBridge()) {
       const result = await nativeCccdScan("photo");
-      if (handleNativePayload(result, "Đã đọc từ ảnh QR CCCD")) return;
+      if (handleNativePayload(result, "Đã đọc từ ảnh CCCD")) return;
       if (result?.error && result.error !== "cancel") showToast(result.error);
       if (result?.error === "cancel") return;
     }
@@ -1880,15 +1971,51 @@
   }
 
   async function ingestQrFile(file) {
-    setQrHint("Đang đọc mã trên ảnh…");
+    setQrHint("Đang đọc QR và thông tin trên ảnh CCCD…");
     try {
       const raw = await decodeQrFromFile(file);
-      if (!raw || !handleDecodedCccd(raw, "Đã đọc từ ảnh QR CCCD")) {
-        showToast("Không đọc được QR trên ảnh. Chụp gần, rõ, không bị chói.");
+      if (raw && handleDecodedCccd(raw, "Đã đọc từ ảnh CCCD")) return;
+      const data = await requestCccdOcrFromBrowser(file);
+      if (hasCccdData(data)) {
+        showCccdPreview(data, "Đã đọc thông tin CCCD từ ảnh");
+        return;
       }
+      showToast("Không nhận ra CCCD trên ảnh. Chọn ảnh mặt trước rõ, đủ sáng.");
     } catch {
-      showToast("Không đọc được ảnh QR");
+      showToast("Không đọc được ảnh CCCD");
     }
+  }
+
+  async function requestCccdOcrFromBrowser(file) {
+    const endpoint = String(localStorage.getItem("pipedesk_cccd_ocr_url_v1") || "").trim();
+    if (!endpoint) return null;
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").split(",").pop() || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64: base64 })
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const values = payload?.data && typeof payload.data === "object" ? payload.data : payload;
+    const id = String(values?.ID_number || values?.id_number || values?.cccd || "").replace(/\D/g, "");
+    return {
+      cccd: id,
+      customerName: String(values?.Name || values?.name || "").trim(),
+      dateOfBirth: normalizeQrDate(values?.Date_of_birth || values?.date_of_birth || values?.dateOfBirth),
+      gender: normalizeQrGender(values?.Gender || values?.gender),
+      nationality: String(values?.Nationality || values?.nationality || "Việt Nam").trim(),
+      fullAddress: String(values?.Place_of_residence || values?.place_of_residence || values?.fullAddress || "").trim(),
+      idIssueDate: normalizeQrDate(values?.Date_of_issue || values?.date_of_issue || values?.idIssueDate),
+      idExpiryDate: normalizeQrDate(values?.Date_of_expiry || values?.date_of_expiry || values?.idExpiryDate),
+      cmndOld: "",
+      cancelledId: ""
+    };
   }
 
   function applyPastedQr() {
@@ -1896,34 +2023,6 @@
     if (!handleDecodedCccd(raw, "Đã đọc từ mã dán")) {
       showToast("Chuỗi dán chưa đúng định dạng QR CCCD.");
     }
-  }
-
-  function openNfcModal() {
-    openQrScanModal("nfc");
-  }
-
-  async function startNfcRead() {
-    const can = ($("#nfcCanInput")?.value || $("#cccdCan")?.value || "").replace(/\D/g, "").slice(0, 6);
-    if (can && $("#cccdCan")) $("#cccdCan").value = can;
-    if (!hasNativeCccdBridge()) {
-      $("#nfcHint").textContent = "Trình duyệt không hỗ trợ đọc chip CCCD. Cài IPA trên iPhone rồi dùng nút NFC.";
-      return;
-    }
-    $("#nfcHint").textContent = "Đang chờ thẻ… giữ nguyên đến khi có kết quả.";
-    const result = await nativeCccdScan("nfc", {
-      can,
-      cccd: $("#cccd")?.value || "",
-      dob: $("#dateOfBirth")?.value || "",
-      expiry: $("#idExpiryDate")?.value || ""
-    });
-    if (handleNativePayload(result, "Đã điền từ chip NFC")) return;
-    const err = result?.error || "Không đọc được chip";
-    if (err === "cancel") {
-      $("#nfcHint").textContent = "Đã hủy.";
-      return;
-    }
-    $("#nfcHint").textContent = err;
-    showToast(err);
   }
 
   window.__cccdScanResult = window.__cccdScanResult || null;
@@ -1947,7 +2046,6 @@
     $("#idIssueDate").value = record?.idIssueDate || "";
     $("#idExpiryDate").value = record?.idExpiryDate || "";
     $("#cancelledId").value = record?.cancelledId || "";
-    $("#cccdCan").value = "";
     $("#personalEmail").value = record?.personalEmail || "";
     updateCccdCard();
     updatePhoneActions();
@@ -2791,7 +2889,6 @@
       await openQrScanModal("photo");
       pickQrPhoto();
     });
-    $("#scanCccdNfcBtn")?.addEventListener("click", () => openQrScanModal("nfc"));
     $("#scanCccdPasteBtn")?.addEventListener("click", () => openQrScanModal("paste"));
     $("#qrPickPhotoBtn")?.addEventListener("click", pickQrPhoto);
     $("#qrPasteApplyBtn")?.addEventListener("click", applyPastedQr);
@@ -2805,13 +2902,6 @@
         setScanTab(tab);
         if (tab === "qr") await startWebQrCamera();
         else await stopWebQr();
-        if (tab === "nfc") {
-          const can = $("#cccdCan")?.value || "";
-          if (can && $("#nfcCanInput")) $("#nfcCanInput").value = can;
-          $("#nfcHint").textContent = hasNativeCccdBridge()
-            ? "Bấm bắt đầu, sau đó chạm thẻ vào cạnh trên iPhone."
-            : "Web không đọc được chip CCCD. Cần app iOS (IPA) để dùng NFC.";
-        }
         if (tab === "paste") $("#qrPasteInput")?.focus();
       });
     });
@@ -2831,7 +2921,6 @@
       $(`#${id}`)?.addEventListener("change", updateCccdCard);
     });
     $("#qrFileInput")?.addEventListener("change", handleQrFile);
-    $("#nfcStartBtn")?.addEventListener("click", startNfcRead);
     $$("[data-close-qr]").forEach((el) => el.addEventListener("click", closeQrScanModal));
     $("#exportJsonBtn").addEventListener("click", exportJson);
     $("#exportExcelBtn").addEventListener("click", exportExcel);

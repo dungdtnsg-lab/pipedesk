@@ -49,7 +49,6 @@
     <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></symbol>
     <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z"/><circle cx="12" cy="11" r="2"/></symbol>
     <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/></symbol>
-    <symbol id="i-nfc" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 8.5c2.8 0 5 2.2 5 7M9 12c1.5 0 2.5 1.2 2.5 3.5"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M6 17l4.2-4.2 3 3L16 13l4.5 4"/></symbol>
     <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="7" width="11" height="13" rx="1.6"/><path d="M8 10H6.4A1.4 1.4 0 0 1 5 8.6V4.4A1.4 1.4 0 0 1 6.4 3h7.2A1.4 1.4 0 0 1 15 4.4V7"/><path d="M10 3.2h4v2.2h-4z"/></symbol>
     <symbol id="i-torch" viewBox="0 0 24 24"><path d="M9 2h6l1 5H8z"/><path d="M8 7h8v3l-1.2 2v8.5a1.5 1.5 0 0 1-1.5 1.5h-2.6A1.5 1.5 0 0 1 9.2 20.5V12L8 10z"/><path d="M12 13v4"/></symbol>
@@ -277,7 +276,7 @@
         <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
       </div>
       <div class="about">
-        <strong>CRM D7 v1.7.0</strong>
+        <strong>CRM D7 v1.7.1</strong>
         <span>Phát triển bởi Thân Sang</span>
       </div>
     </section>
@@ -348,7 +347,7 @@
           </label>
           <div class="form-section-title full">
             <strong>Thông tin CCCD</strong>
-            <small>Quét QR góc dưới mặt trước thẻ · chụp ảnh · dán mã · đọc chip NFC</small>
+            <small>Quét QR góc dưới mặt trước thẻ · đọc ảnh CCCD · dán mã</small>
           </div>
           <div class="cccd-capture full" id="cccdCapture">
             <article class="cccd-id" aria-live="polite">
@@ -396,11 +395,7 @@
               <div class="cccd-tools-row">
                 <button type="button" id="scanCccdPhotoBtn" class="secondary compact">
                   <svg class="ico"><use href="#i-image"/></svg>
-                  Ảnh QR
-                </button>
-                <button type="button" id="scanCccdNfcBtn" class="secondary compact">
-                  <svg class="ico"><use href="#i-nfc"/></svg>
-                  NFC
+                  Đọc ảnh CCCD
                 </button>
                 <button type="button" id="scanCccdPasteBtn" class="secondary compact">
                   <svg class="ico"><use href="#i-paste"/></svg>
@@ -444,10 +439,6 @@
           <label class="field">
             <span>Số ĐD đã hủy</span>
             <input id="cancelledId" type="text" inputmode="numeric" autocomplete="off" placeholder="Nếu có">
-          </label>
-          <label class="field">
-            <span>CAN (6 số NFC)</span>
-            <input id="cccdCan" type="text" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="In trên mặt trước thẻ">
           </label>
           <div class="form-section-title full">
             <strong>Địa chỉ khách hàng</strong>
@@ -628,9 +619,8 @@
 
       <nav class="scan-tabs" role="tablist" aria-label="Cách đọc CCCD">
         <button type="button" class="scan-tab active" role="tab" aria-selected="true" data-scan-tab="qr">QR</button>
-        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="photo">Ảnh</button>
+        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="photo">Ảnh CCCD</button>
         <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="paste">Dán mã</button>
-        <button type="button" class="scan-tab" role="tab" aria-selected="false" data-scan-tab="nfc">NFC</button>
       </nav>
 
       <div class="scan-panels">
@@ -656,11 +646,11 @@
         <div class="scan-panel" data-scan-panel="photo" role="tabpanel">
           <div class="photo-drop" id="qrPhotoDrop">
             <svg class="ico photo-drop-ico"><use href="#i-image"/></svg>
-            <strong>Chụp cận góc QR</strong>
-            <p>Mã CCCD chỉ khoảng 1 cm. Chụp mặt trước, góc dưới bên phải, đủ sáng, không bị lóa.</p>
+            <strong>Chọn ảnh CCCD</strong>
+            <p>Chọn ảnh mặt trước hoặc mặt sau CCCD từ thư viện. App đọc QR trước rồi OCR các trường thông tin.</p>
             <button class="primary" type="button" id="qrPickPhotoBtn">
               <svg class="ico"><use href="#i-image"/></svg>
-              Chọn hoặc chụp ảnh
+              Chọn ảnh từ thư viện
             </button>
           </div>
         </div>
@@ -674,25 +664,6 @@
           <p class="qr-hint">Copy nội dung QR từ app khác rồi dán vào đây khi camera không đọc được mã nhỏ.</p>
         </div>
 
-        <div class="scan-panel" data-scan-panel="nfc" role="tabpanel">
-          <div class="nfc-visual" aria-hidden="true">
-            <div class="nfc-wave"></div>
-            <div class="nfc-phone">
-              <span></span>
-            </div>
-            <strong>Giữ mép trên iPhone sát thẻ</strong>
-          </div>
-          <label class="field">
-            <span>CAN — 6 số in trên mặt trước thẻ (gần QR)</span>
-            <input id="nfcCanInput" type="text" inputmode="numeric" maxlength="6" placeholder="Ví dụ: 123456" autocomplete="off">
-          </label>
-          <p class="qr-hint nfc-help">
-            Chip CCCD dùng PACE/CAN. Có 6 số CAN thì không cần ngày sinh.
-            Apple ID miễn phí (Sideloadly) thường không cấp quyền NFC — khi đó dùng QR hoặc ảnh.
-          </p>
-          <p id="nfcHint" class="qr-hint"></p>
-          <button class="primary wide" type="button" id="nfcStartBtn">Bắt đầu đọc NFC</button>
-        </div>
       </div>
 
       <div id="cccdPreview" class="cccd-preview" hidden>
@@ -705,7 +676,7 @@
           </div>
         </div>
       </div>
-      <input id="qrFileInput" type="file" accept="image/*" capture="environment" hidden>
+      <input id="qrFileInput" type="file" accept="image/*" hidden>
     </section>
   </div>
 

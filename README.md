@@ -2,13 +2,13 @@
 
 PWA quản lý pipeline khách hàng (UPL, thẻ CC, SCL, Bước 3).
 
-**Phiên bản:** 1.6.1
+**Phiên bản:** 1.7.1
 
 ## Tải IPA (iPhone)
 
 File IPA unsigned, build trên GitHub Actions (macOS / Xcode):
 
-**[Releases → PipeDesk v1.6.1 IPA](https://github.com/dungdtnsg-lab/pipedesk/releases/tag/v1.6.1-ios)**
+**[Releases → PipeDesk v1.7.1 IPA](https://github.com/dungdtnsg-lab/pipedesk/releases/tag/v1.7.1-ios)**
 
 Cài bằng **Sideloadly** (Windows/Mac) hoặc **AltStore / SideStore**:
 
@@ -35,3 +35,9 @@ python3 -m http.server 8080
 Mở `http://127.0.0.1:8080`.
 
 Dữ liệu khách chỉ lưu trên thiết bị, không gửi lên GitHub.
+
+## CCCD Việt Nam
+
+- Quét QR CCCD theo payload 12 số của Việt Nam.
+- Chọn ảnh CCCD từ thư viện: app đọc QR trước, sau đó OCR Vision trên iPhone.
+- Có thể cấu hình server OCR theo tài liệu [Vietnamese-CitizenID-Recognition](https://github.com/thigiacmaytinh/Vietnamese-CitizenID-Recognition) bằng cách đặt URL `/api/idcard` vào khóa `CCCDOCRAPIURL` trong `ios/PipeDesk/Info.plist`. Để trống khóa này thì dùng OCR cục bộ.

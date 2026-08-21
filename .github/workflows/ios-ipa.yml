@@ -62,16 +62,17 @@ jobs:
       - name: Attach IPA to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.7.0-ios
-          name: CRM D7 v1.7.0 IPA
+          tag_name: v1.7.1-ios
+          name: CRM D7 v1.7.1 IPA
           files: PipeDesk.ipa
           body: |
             IPA unsigned (arm64). Cài bằng Sideloadly / AltStore / SideStore với Apple ID của bạn.
 
-            v1.7.0 — giao diện quét CCCD mới:
+            v1.7.1 — quét CCCD Việt Nam và đọc ảnh OCR:
             - Thẻ căn cước trong form + màn quét full-screen
             - QR native (khung ID-1, zoom 2.2×, đèn pin)
-            - Ảnh QR / Dán mã / NFC
+            - Đọc ảnh CCCD từ thư viện (QR trước, OCR trên máy hoặc API tùy chọn)
+            - Dán mã QR
             - Xem trước rồi mới điền hồ sơ
 
             1. Tải `PipeDesk.ipa`
@@ -79,4 +80,4 @@ jobs:
             3. Cắm iPhone, bấm Start
             4. Trên iPhone: Cài đặt → General → VPN & Device Management → trust developer
 
-            NFC cần quyền Tag Reading — Apple ID miễn phí (Sideloadly) thường không cấp. Khi đó dùng Quét QR / Ảnh QR / Dán mã.
+            API OCR tùy chọn: đặt URL endpoint `/api/idcard` của server triển khai theo tài liệu OCR vào khóa `CCCDOCRAPIURL` trong Info.plist. Nếu để trống, app dùng OCR Vision trên iPhone.

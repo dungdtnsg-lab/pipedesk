@@ -2,11 +2,13 @@ import UIKit
 import WebKit
 import LocalAuthentication
 import AVFoundation
+import PhotosUI
+import UniformTypeIdentifiers
+import Vision
 
-final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler, PHPickerViewControllerDelegate {
     private var webView: WKWebView!
     private var fileDestination: URL?
-    private var nfcReader: CccdNfcReader?
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .darkContent }
 
@@ -171,10 +173,6 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     private func handleCccdScan(_ body: Any) {
         let dict = body as? [String: Any] ?? [:]
         let action = String(dict["action"] as? String ?? "qr")
-        if action == "nfc" {
-            startNfc(dict)
-            return
-        }
         if action == "photo" {
             startPhotoPicker()
             return
@@ -195,59 +193,172 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     }
 
     private func startPhotoPicker() {
-        let picker = UIImagePickerController()
+        var configuration = PHPickerConfiguration(photoLibrary: .shared())
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = self
-        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-            picker.sourceType = .camera
-        } else {
-            picker.sourceType = .photoLibrary
-        }
-        picker.allowsEditing = false
         present(picker, animated: true)
     }
 
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true) {
-            self.replyCccd(ok: false, source: "photo", raw: nil, error: "cancel", data: nil)
-        }
-    }
-
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-        let image = info[.originalImage] as? UIImage
-        picker.dismiss(animated: true) {
-            if let image, let text = CccdScannerViewController.decode(image: image) {
-                self.replyCccd(ok: true, source: "photo", raw: text, error: nil, data: nil)
-            } else {
-                self.replyCccd(ok: false, source: "photo", raw: nil, error: "Không đọc được QR trên ảnh. Chụp gần, rõ, tránh lóa.", data: nil)
+            guard let result = results.first else {
+                self.replyCccd(ok: false, source: "photo", raw: nil, error: "cancel", data: nil)
+                return
+            }
+            let provider = result.itemProvider
+            guard provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) else {
+                self.replyCccd(ok: false, source: "photo", raw: nil, error: "Ảnh không hợp lệ", data: nil)
+                return
+            }
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] data, error in
+                guard let self else { return }
+                DispatchQueue.main.async {
+                    guard let data else {
+                        self.replyCccd(
+                            ok: false,
+                            source: "photo",
+                            raw: nil,
+                            error: error?.localizedDescription ?? "Không tải được ảnh từ thư viện",
+                            data: nil
+                        )
+                        return
+                    }
+                    self.processCccdImage(data)
+                }
             }
         }
     }
 
-    private func startNfc(_ dict: [String: Any]) {
-        let reader = CccdNfcReader()
-        nfcReader = reader
-        reader.onResult = { [weak self] payload in
-            let ok = payload["ok"] as? Bool ?? false
-            let raw = payload["raw"] as? String
-            let error = payload["error"] as? String
-            let data = payload["data"] as? [String: Any]
-            self?.replyCccd(ok: ok, source: "nfc", raw: raw, error: error, data: data)
-            self?.nfcReader = nil
+    private var cccdOCRAPIURL: URL? {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "CCCDOCRAPIURL") as? String else { return nil }
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, let url = URL(string: value), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
+            return nil
         }
-        reader.start(
-            can: String(dict["can"] as? String ?? ""),
-            cccd: String(dict["cccd"] as? String ?? ""),
-            dob: String(dict["dob"] as? String ?? ""),
-            expiry: String(dict["expiry"] as? String ?? "")
-        )
+        return url
     }
 
-    private func jsString(_ value: String) -> String {
-        value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "")
+    private func processCccdImage(_ data: Data) {
+        let imageData = UIImage(data: data)?.jpegData(compressionQuality: 0.9) ?? data
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            if let image = UIImage(data: imageData), let text = CccdScannerViewController.decode(image: image) {
+                self?.replyCccd(ok: true, source: "photo-qr", raw: text, error: nil, data: nil)
+                return
+            }
+            if let endpoint = self?.cccdOCRAPIURL {
+                self?.requestCccdOCR(endpoint: endpoint, imageData: imageData)
+            } else {
+                self?.recognizeCccdText(in: imageData)
+            }
+        }
+    }
+
+    private func requestCccdOCR(endpoint: URL, imageData: Data) {
+        var request = URLRequest(url: endpoint, timeoutInterval: 35)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload: [String: Any] = ["imageBase64": imageData.base64EncodedString()]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            recognizeCccdText(in: imageData)
+            return
+        }
+        request.httpBody = body
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
+            guard let self else { return }
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200...299).contains(status), let data,
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let mapped = self.mapCccdOCR(object), !mapped.isEmpty else {
+                self.recognizeCccdText(in: imageData)
+                return
+            }
+            self.replyCccd(ok: true, source: "photo-api", raw: nil, error: nil, data: mapped)
+        }.resume()
+    }
+
+    private func mapCccdOCR(_ object: [String: Any]) -> [String: Any]? {
+        let values = (object["data"] as? [String: Any]) ?? object
+        func string(_ keys: [String]) -> String? {
+            for key in keys {
+                if let value = values[key] as? String {
+                    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { return trimmed }
+                } else if let value = values[key] as? NSNumber {
+                    return value.stringValue
+                }
+            }
+            return nil
+        }
+
+        var result: [String: Any] = [:]
+        if let value = string(["ID_number", "id_number", "cccd", "CCCD"]) {
+            let digits = value.filter { $0.isNumber }
+            if !digits.isEmpty { result["cccd"] = digits }
+        }
+        if let value = string(["Name", "name", "customerName", "full_name"]) { result["customerName"] = value }
+        if let value = string(["Date_of_birth", "date_of_birth", "dateOfBirth", "dob"]) { result["dateOfBirth"] = value }
+        if let value = string(["Date_of_issue", "date_of_issue", "idIssueDate"]) { result["idIssueDate"] = value }
+        if let value = string(["Date_of_expiry", "date_of_expiry", "idExpiryDate"]) { result["idExpiryDate"] = value }
+        if let value = string(["Gender", "gender"]) { result["gender"] = value }
+        if let value = string(["Nationality", "nationality"]) { result["nationality"] = value }
+        if let value = string(["Place_of_residence", "place_of_residence", "fullAddress", "address"]) { result["fullAddress"] = value }
+        if let value = string(["Place_of_origin", "place_of_origin"]) { result["placeOfOrigin"] = value }
+        return result.isEmpty ? nil : result
+    }
+
+    private func recognizeCccdText(in data: Data) {
+        guard let image = UIImage(data: data), let cgImage = image.cgImage else {
+            replyCccd(ok: false, source: "photo", raw: nil, error: "Không đọc được ảnh CCCD", data: nil)
+            return
+        }
+        let orientation = cgOrientation(for: image.imageOrientation)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let request = VNRecognizeTextRequest()
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            if let supported = try? VNRecognizeTextRequest.supportedRecognitionLanguages(
+                for: .accurate,
+                revision: VNRecognizeTextRequest.currentRevision
+            ) {
+                request.recognitionLanguages = ["vi-VN", "en-US"].filter { supported.contains($0) }
+            }
+            let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+            do {
+                try handler.perform([request])
+            } catch {
+                DispatchQueue.main.async {
+                    self?.replyCccd(ok: false, source: "photo", raw: nil, error: "Không nhận diện được chữ trên ảnh CCCD", data: nil)
+                }
+                return
+            }
+            let text = (request.results as? [VNRecognizedTextObservation] ?? [])
+                .compactMap { $0.topCandidates(1).first?.string }
+                .joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            DispatchQueue.main.async {
+                if text.isEmpty {
+                    self?.replyCccd(ok: false, source: "photo", raw: nil, error: "Không nhận diện được chữ trên ảnh CCCD", data: nil)
+                } else {
+                    self?.replyCccd(ok: true, source: "photo-ocr", raw: text, error: nil, data: nil)
+                }
+            }
+        }
+    }
+
+    private func cgOrientation(for orientation: UIImage.Orientation) -> CGImagePropertyOrientation {
+        switch orientation {
+        case .up: return .up
+        case .down: return .down
+        case .left: return .left
+        case .right: return .right
+        case .upMirrored: return .upMirrored
+        case .downMirrored: return .downMirrored
+        case .leftMirrored: return .leftMirrored
+        case .rightMirrored: return .rightMirrored
+        @unknown default: return .up
+        }
     }
 
     private func replyCccd(ok: Bool, source: String, raw: String?, error: String?, data: [String: Any]?) {
