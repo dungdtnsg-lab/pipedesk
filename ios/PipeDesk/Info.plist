@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.7.0</string>
+	<string>1.7.1</string>
 	<key>CFBundleVersion</key>
-	<string>169</string>
+	<string>171</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
@@ -66,14 +66,9 @@
 	<key>NSCameraUsageDescription</key>
 	<string>CRM D7 cần camera để quét mã QR trên thẻ căn cước.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>CRM D7 cần ảnh để đọc mã QR CCCD khi camera trực tiếp không bắt được mã nhỏ.</string>
-	<key>NFCReaderUsageDescription</key>
-	<string>CRM D7 đọc chip NFC trên thẻ căn cước để điền thông tin khách hàng.</string>
-	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
-	<array>
-		<string>A0000002471001</string>
-		<string>A0000002472001</string>
-	</array>
+	<string>CRM D7 cần ảnh để đọc QR và nhận diện thông tin CCCD.</string>
+	<key>CCCDOCRAPIURL</key>
+	<string></string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
