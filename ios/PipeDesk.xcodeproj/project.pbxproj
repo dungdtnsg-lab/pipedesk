@@ -211,6 +211,10 @@
 					AVFoundation,
 					"-framework",
 					Vision,
+					"-framework",
+					PhotosUI,
+					"-framework",
+					UniformTypeIdentifiers,
 				);
 				MARKETING_VERSION = 1.7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.thansang.pipedesk;
@@ -249,6 +253,10 @@
 					AVFoundation,
 					"-framework",
 					Vision,
+					"-framework",
+					PhotosUI,
+					"-framework",
+					UniformTypeIdentifiers,
 				);
 				MARKETING_VERSION = 1.7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.thansang.pipedesk;
