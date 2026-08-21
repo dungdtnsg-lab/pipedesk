@@ -300,6 +300,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         if let value = string(["Name", "name", "customerName", "full_name"]) { result["customerName"] = value }
         if let value = string(["Date_of_birth", "date_of_birth", "dateOfBirth", "dob"]) { result["dateOfBirth"] = value }
         if let value = string(["Date_of_issue", "date_of_issue", "idIssueDate"]) { result["idIssueDate"] = value }
+        if let value = string(["Place_of_issue", "place_of_issue", "Place_of_issuance", "place_of_issuance", "Issuing_authority", "issuing_authority", "Issue_place", "issuePlace", "idIssuePlace"]) { result["idIssuePlace"] = value }
         if let value = string(["Date_of_expiry", "date_of_expiry", "idExpiryDate"]) { result["idExpiryDate"] = value }
         if let value = string(["Gender", "gender"]) { result["gender"] = value }
         if let value = string(["Nationality", "nationality"]) { result["nationality"] = value }

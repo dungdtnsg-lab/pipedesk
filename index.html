@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=1.7.1">
+  <link rel="stylesheet" href="style.css?v=1.7.2">
 
 <script>
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -276,7 +276,7 @@
         <button id="clearAllBtn" class="danger">Xóa toàn bộ khách hàng</button>
       </div>
       <div class="about">
-        <strong>CRM D7 v1.7.1</strong>
+        <strong>CRM D7 v1.7.2</strong>
         <span>Phát triển bởi Thân Sang</span>
       </div>
     </section>
@@ -431,6 +431,10 @@
           <label class="field">
             <span>Ngày cấp CCCD</span>
             <input id="idIssueDate" type="date">
+          </label>
+          <label class="field">
+            <span>Nơi cấp CCCD</span>
+            <input id="idIssuePlace" type="text" autocomplete="organization" placeholder="Cơ quan cấp CCCD">
           </label>
           <label class="field">
             <span>Ngày hết hạn</span>
@@ -683,8 +687,8 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="vendor/jsQR.js"></script>
   <script src="demo-seed.js"></script>
-  <script src="data/vietnam-address-catalogs.js?v=1.7.1"></script>
-  <script src="main.js?v=1.7.1"></script>
+  <script src="data/vietnam-address-catalogs.js?v=1.7.2"></script>
+  <script src="main.js?v=1.7.2"></script>
   <script>
     (() => {
       const installButton = document.getElementById("installBtn");
