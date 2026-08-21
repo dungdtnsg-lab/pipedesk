@@ -2,7 +2,7 @@ import AVFoundation
 import UIKit
 import Vision
 
-final class CccdScannerViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureMetadataOutputObjectsDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+final class CccdScannerViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureMetadataOutputObjectsDelegate {
     var onResult: ((String) -> Void)?
     var onCancel: (() -> Void)?
 
@@ -48,7 +48,6 @@ final class CccdScannerViewController: UIViewController, AVCaptureVideoDataOutpu
         hint.translatesAutoresizingMaskIntoConstraints = false
 
         let close = pillButton("Đóng", action: #selector(cancelTapped))
-        let photo = pillButton("Ảnh QR", action: #selector(pickPhoto))
         let torch = pillButton("Đèn pin", action: #selector(toggleTorch))
         torch.tag = 21
 
@@ -82,7 +81,6 @@ final class CccdScannerViewController: UIViewController, AVCaptureVideoDataOutpu
         view.addSubview(title)
         view.addSubview(hint)
         view.addSubview(close)
-        view.addSubview(photo)
         view.addSubview(torch)
         view.addSubview(frame)
         view.addSubview(qrBox)
@@ -105,10 +103,8 @@ final class CccdScannerViewController: UIViewController, AVCaptureVideoDataOutpu
             qrBox.trailingAnchor.constraint(equalTo: frame.trailingAnchor, constant: -14),
             qrBox.bottomAnchor.constraint(equalTo: frame.bottomAnchor, constant: -12),
             zoomRow.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            zoomRow.bottomAnchor.constraint(equalTo: photo.topAnchor, constant: -14),
-            photo.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -18),
-            photo.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            torch.centerYAnchor.constraint(equalTo: photo.centerYAnchor),
+            zoomRow.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -18),
+            torch.centerYAnchor.constraint(equalTo: zoomRow.centerYAnchor),
             torch.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
         ])
     }
@@ -225,30 +221,6 @@ final class CccdScannerViewController: UIViewController, AVCaptureVideoDataOutpu
         }
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right)
         try? handler.perform([request])
-    }
-
-    @objc func pickPhoto() {
-        let picker = UIImagePickerController()
-        picker.delegate = self
-        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
-        picker.allowsEditing = false
-        present(picker, animated: true)
-    }
-
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true)
-    }
-
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-        let image = (info[.originalImage] as? UIImage)
-        picker.dismiss(animated: true) {
-            guard let image else { return }
-            if let text = Self.decode(image: image) {
-                self.finish(text)
-            } else {
-                self.alert("Không đọc được QR trên ảnh. Chụp gần, rõ nét, tránh lóa.")
-            }
-        }
     }
 
     static func decode(image: UIImage) -> String? {
